@@ -178,9 +178,12 @@ export default function Home() {
       {/* SOBRE */}
       <section id="sobre" className="bg-white border-y border-border">
         <div className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10 items-center">
-          <div className="rounded-3xl bg-white border border-border shadow-sm p-8 relative overflow-hidden min-h-[260px] flex flex-col items-center justify-center gap-4">
-            <img src="/images/logo-full.jpeg" alt="Logo Santa Fé Distribuidora" className="max-h-[240px] w-auto object-contain" data-testid="about-logo" />
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5"><MapPin className="w-4 h-4 text-secondary" /> Cidade Verde · João Pessoa</p>
+          <div className="rounded-3xl overflow-hidden border border-border shadow-sm relative min-h-[260px]">
+            <img src="/images/deposito.jpeg" alt="Fachada da Santa Fé Distribuidora" className="w-full h-full min-h-[260px] object-cover" data-testid="about-depot-photo" />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-5 flex items-end justify-between gap-3">
+              <p className="text-sm text-white font-semibold flex items-center gap-1.5"><MapPin className="w-4 h-4 text-secondary" /> Cidade Verde · João Pessoa</p>
+              <img src="/images/logo-mark.png" alt="Logo Santa Fé" className="w-12 h-12 rounded-full border-2 border-white/60" />
+            </div>
           </div>
           <div>
             <span className="text-xs font-bold uppercase tracking-widest text-secondary">Conheça a Santa Fé</span>

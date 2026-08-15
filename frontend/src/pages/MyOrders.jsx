@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Gift, PackageOpen } from "lucide-react";
+import { Gift, PackageOpen, RotateCcw } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
+import { ReferralCard } from "../components/ReferralCard";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const STATUS_LABELS = { enviado: "Enviado", em_entrega: "Em entrega", entregue: "Entregue", cancelado: "Cancelado" };
@@ -35,6 +36,8 @@ export default function MyOrders() {
   return (
     <div className="max-w-md mx-auto px-5 pb-16">
       <h1 className="text-2xl font-extrabold tracking-tight mt-6" style={{ fontFamily: "Manrope" }}>Meus pedidos</h1>
+
+      <ReferralCard />
 
       {loyalty && (
         <div className="mt-4 rounded-2xl bg-primary text-white p-5" data-testid="loyalty-stamp-card">
@@ -87,6 +90,12 @@ export default function MyOrders() {
               {o.loyalty_discount && (
                 <p className="text-xs font-bold text-orange-600 mt-2">🎁 Pedido com desconto de fidelidade</p>
               )}
+              <button
+                onClick={() => navigate(`/pedido/${o.items[0].product_id}`, { state: { repeat: o } })}
+                data-testid={`repeat-order-${i}`}
+                className="mt-3 w-full h-11 rounded-full border border-primary text-primary text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-accent transition-colors">
+                <RotateCcw className="w-4 h-4" /> Pedir novamente
+              </button>
             </div>
           ))
         )}

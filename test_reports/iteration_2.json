@@ -1,0 +1,77 @@
+{
+  "summary": "Iteration 2 (new features): 14/15 backend tests PASS (register cliente+comercio, duplicate phone, wrong-password, referral unlock+credit+self-ref block, coupon CRUD+validate+first-purchase, order with cupom fixed + use_credit, business order (price a combinar), referral/me + QR, businesses public/approve, upload facade JPG+serve, bad-mime rejection). 1 backend FAIL: brute-force 429 lockout does NOT trigger in production (7 wrong logins → all 401, no 429). Root cause identified: uses request.client.host which resolves to different K8s ingress pod IPs per request. Frontend smoke test: /entrar register cliente + login wrong pwd error + comercio fields all work. Discovered a CRITICAL frontend bug during code review: OrderFlow.jsx has NO UI (no <input>/<button>/<checkbox>) to enter coupon_code or toggle useCredit — state and applyCoupon function exist but are never rendered, so the entire cupom + crédito UI feature is unreachable from the customer order flow.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/auth/login (brute force lockout)",
+        "issue": "Rate-limit identifier uses `request.client.host` (line 340 server.py) which behind K8s ingress resolves to different backend pod IPs (10.231.155.130, 10.231.155.133, ...) for each request. Reproduced: 7 consecutive wrong-password attempts → all 401, no 429. Attempts get split across identifiers, count never reaches 5 on any single identifier. Fix: use phone-only identifier, or read X-Forwarded-For first IP (with allowlisted proxy).",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "POST /api/auth/session (Google)",
+        "issue": "Spec requires non-whitelisted Google emails to return 403, but code (server.py ~L241) accepts any Google email and assigns role='customer' (only role differs). Since the frontend now hides customer Google login and Google button is labeled 'Acesso administrativo (Google)', a non-admin who obtains a Google session_id can still exchange it and be logged in as a customer. Add: `if email not in ADMIN_EMAILS: raise HTTPException(403, 'Google login é exclusivo para administradores')`.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/businesses",
+        "issue": "facade_url is returned as absolute-relative path '/api/files/...'. The frontend Businesses.jsx concatenates `${REACT_APP_BACKEND_URL}${b.facade_url}` which works, but consider returning full URL or documenting the contract."
+      },
+      {
+        "endpoint": "POST /api/orders (referral)",
+        "issue": "Line 562 `unlocked_now = bool(user and not user.get('referral_unlocked') and has_p13(body.items))` uses the pre-update user snapshot which is correct, but `user` dict lacks password_hash exclusion in some paths — verify no leakage. (Currently fine because get_current_user projects out password_hash.)"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "OrderFlow.jsx (step 2 or step 3)",
+        "issue": "MISSING UI — the coupon input field, 'Aplicar cupom' button, and 'Usar meu crédito' checkbox are not rendered anywhere in the JSX. State (`couponCode`, `setCouponCode`, `appliedCoupon`, `useCredit`, `setUseCredit`) and `applyCoupon` function are declared but never referenced by any <input>, <button>, or <Checkbox>. Result: users cannot apply cupom nor toggle crédito de indicação from the customer flow — the entire feature is unreachable. `data-testid=summary-coupon-discount` / `summary-credit-discount` only render inside the summary when applied, which never happens.",
+        "selector": "[data-testid=\"coupon-input\"] / [data-testid=\"apply-coupon\"] / [data-testid=\"use-credit\"] — none of these exist in the DOM",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Cupom + Crédito no pedido",
+        "issue": "Backend accepts coupon_code and use_credit correctly (verified via pytest), but frontend never sends them because there's no UI to set them. Payload from OrderFlow.jsx always has coupon_code='' and use_credit=false unless localStorage-hacked.",
+        "affected_selectors": ["OrderFlow.jsx step-2/step-3 render blocks"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration2_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iteration2_results.xml"
+  ],
+  "action_items": [
+    "FIX CRITICAL FRONTEND: Add coupon input + apply button + use-credit checkbox in OrderFlow.jsx step 3 (summary) so users can actually apply cupom/crédito. Wire to existing state and applyCoupon(). Suggested testids: coupon-input, apply-coupon-button, use-credit-checkbox.",
+    "FIX HIGH BACKEND: Change brute-force identifier in POST /api/auth/login. Options: (a) use phone-only identifier (`identifier = phone`), (b) read `X-Forwarded-For` header (first IP), (c) also index attempts by phone alone. Currently 429 never triggers behind ingress.",
+    "FIX HIGH BACKEND: Enforce Google-admin-only in POST /api/auth/session — return 403 for emails not in ADMIN_EMAILS instead of creating customer role.",
+    "MINOR: OrderFlow step 1 mobile qty controls overlap fixed bottom bar (carried from iteration 1 — still not fixed)."
+  ],
+  "critical_code_review_comments": [
+    "OrderFlow.jsx: coupon + use-credit state defined but never rendered as JSX inputs → dead code. Feature entirely missing on the client.",
+    "server.py POST /api/auth/login (L340): identifier = f'{ip}:{phone}' uses request.client.host which is the ingress pod IP behind K8s — not the real client IP. Multi-replica ingress splits attempts, brute-force lockout broken in prod.",
+    "server.py POST /api/auth/session (L241): missing ADMIN_EMAILS check for Google. Spec says non-whitelisted google emails must 403. Currently accepted as customer.",
+    "server.py POST /api/orders (L521-525): referral credit correctly guards against self-ref (`user['user_id'] != ref_user['user_id']`) and only credits when has_p13 and ref_user.referral_unlocked. ✓",
+    "server.py POST /api/orders (L562): referral_unlocked_now correctly reads pre-update snapshot. ✓",
+    "server.py /api/businesses (L677): only returns aprovado. ✓",
+    "server.py POST /api/upload/facade (L708): NO auth check — any anonymous caller can upload up to 5MB of images and pollute object storage. Consider requiring auth (user must be logged in to register a comercio anyway).",
+    "server.py POST /api/coupons/validate (L632): only checks `active` and `first_purchase_only`; no expiration/usage-count fields — matches minimal spec.",
+    "AuthPage.jsx: Google login button is labeled 'Acesso administrativo' but /auth/session endpoint doesn't enforce admin whitelist — inconsistency (see backend issue above)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration2_features.py (new)"
+  ],
+  "success_rate": {"backend": "93% (14/15 iteration2 tests pass; brute-force fails as expected due to ingress bug)", "frontend": "50% — auth flow (login/register cliente/comercio) works; cupom+crédito UI missing entirely"},
+  "test_credentials": "Test user 83911112222/teste123 not pre-seeded; tests create ephemeral users via POST /api/auth/register. Admin sessions injected directly via pymongo (see fixture admin_session in test_iteration2_features.py).",
+  "seed_data_creation": "Tests create+cleanup ephemeral users (TEST_ prefixed business names), admin session docs, coupons (TEST/OFF/FIRST prefixes), orders, and 1 facade upload per run. Cleanup happens in try/finally of each test.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL: https://santafe-deposito.preview.emergentagent.com. Run: `pytest /app/backend/tests/test_iteration2_features.py -v`. For admin: fabricate mongo user+session. For brute-force fix verification: after fixing identifier, expect 429 on 6th wrong login regardless of ingress pod. For OrderFlow cupom UI fix: expected testids per spec are `summary-coupon-discount`, `summary-credit-discount`, `summary-total` (these exist in JSX but only render when appliedCoupon truthy). Add a `[data-testid=coupon-input]` and `apply-coupon-button` before requesting UI test.",
+  "rca of the issue": "1) Brute-force 429 not triggering: server.py:340 uses `request.client.host` = ingress-side pod IP; K8s spawns multiple ingress pods, so consecutive requests hit different pods → different identifiers. Login_attempts docs (verified via pymongo) show identifiers like '10.231.155.130:phone' and '10.231.155.133:phone' from the same client. Fix: `identifier = phone` (drop IP) or use X-Forwarded-For first IP. 2) Cupom+Crédito UI missing: OrderFlow.jsx declares state and applyCoupon but does not render any bound <input>/<button>/<Checkbox> — the JSX render tree jumps from address form to summary with no cupom input in between. Grep shows couponCode is only referenced inside applyCoupon (as input) and useState (declaration), never in JSX. 3) Google-admin whitelist: /api/auth/session accepts any email; spec violation."
+}

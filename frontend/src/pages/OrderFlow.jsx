@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Minus, Plus, ArrowLeft, Phone, MessageCircle, AlertTriangle } from "lucide-react";
+import { Minus, Plus, ArrowLeft, Phone, MessageCircle, AlertTriangle, Ticket, Wallet, Share2 } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { ProductVisual } from "../components/ProductVisual";
 
@@ -12,6 +12,7 @@ const PAYMENTS = ["Dinheiro", "PIX", "Cartão na entrega"];
 export default function OrderFlow() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [settings, setSettings] = useState(null);
@@ -24,7 +25,13 @@ export default function OrderFlow() {
   const [cepError, setCepError] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [useCredit, setUseCredit] = useState(false);
+  const [referralInfo, setReferralInfo] = useState(null);
   const submitted = useRef(false);
+  const repeat = location.state?.repeat;
+  const isBusiness = user?.account_type === "comercio";
 
   useEffect(() => {
     axios.get(`${API}/products`).then((r) => {
@@ -47,8 +54,23 @@ export default function OrderFlow() {
           neighborhood: user.saved_address.neighborhood, city: user.saved_address.city,
         } : {}),
       }));
+      axios.get(`${API}/referral/me`, { withCredentials: true }).then((r) => setReferralInfo(r.data)).catch(() => {});
     }
   }, [user]);
+
+  useEffect(() => {
+    if (repeat) {
+      const a = repeat.address;
+      setQty(repeat.items[0].qty);
+      setForm((f) => ({
+        ...f, customer_name: repeat.customer_name, phone: repeat.phone,
+        cep: a.cep, street: a.street, number: a.number, complement: a.complement || "",
+        neighborhood: a.neighborhood, city: a.city, payment_method: repeat.payment_method, note: repeat.note || "",
+      }));
+      setStep(3);
+      toast.success("Pedido anterior carregado! Revise e envie.");
+    }
+  }, [repeat]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -77,6 +99,18 @@ export default function OrderFlow() {
   const formValid = form.customer_name && form.phone.replace(/\D/g, "").length >= 10 &&
     form.cep.length === 8 && form.street && form.number && form.city && !outsideCity;
 
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    try {
+      const r = await axios.post(`${API}/coupons/validate`, { code: couponCode }, { withCredentials: true });
+      setAppliedCoupon(r.data);
+      toast.success(`Cupom ${r.data.code} aplicado!`);
+    } catch (err) {
+      setAppliedCoupon(null);
+      toast.error(err.response?.data?.detail || "Cupom inválido");
+    }
+  };
+
   const submit = async () => {
     if (submitted.current || sending) return;
     submitted.current = true;
@@ -92,6 +126,9 @@ export default function OrderFlow() {
           complement: form.complement, neighborhood: form.neighborhood, city: form.city,
         },
         note: form.note,
+        coupon_code: appliedCoupon?.code || "",
+        use_credit: useCredit,
+        referral_code: localStorage.getItem("sf_ref") || "",
       }, { withCredentials: true });
       setResult(r.data);
       window.open(r.data.whatsapp_url, "_blank");
@@ -107,7 +144,13 @@ export default function OrderFlow() {
   if (!product) return <div className="min-h-[50vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   const unitPrice = form.payment_method === "Cartão na entrega" && product.card_price ? product.card_price : product.price;
-  const total = unitPrice * qty;
+  const subtotal = unitPrice * qty;
+  const couponDiscount = appliedCoupon && !isBusiness
+    ? (appliedCoupon.type === "percent" ? subtotal * appliedCoupon.value / 100 : Math.min(appliedCoupon.value, subtotal))
+    : 0;
+  const availableCredit = referralInfo?.credit || 0;
+  const creditUsed = useCredit && !isBusiness ? Math.min(availableCredit, Math.max(subtotal - couponDiscount, 0)) : 0;
+  const total = isBusiness ? 0 : Math.max(subtotal - couponDiscount - creditUsed, 0);
 
   return (
     <div className="max-w-md mx-auto px-5 pb-32">
@@ -133,8 +176,14 @@ export default function OrderFlow() {
             )}
             <div className="p-6">
               <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Manrope" }}>{product.name}</h1>
-              <p className="text-xl font-bold text-primary mt-1">{brl(product.price)} <span className="text-sm text-muted-foreground font-normal">/ unidade à vista</span></p>
-              {product.card_price && <p className="text-sm text-muted-foreground">{brl(product.card_price)} no cartão</p>}
+              {isBusiness ? (
+                <p className="text-lg font-bold text-primary mt-1" data-testid="business-price-note">Preço a combinar <span className="text-sm text-muted-foreground font-normal">(conta comércio)</span></p>
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-primary mt-1">{brl(product.price)} <span className="text-sm text-muted-foreground font-normal">/ unidade à vista</span></p>
+                  {product.card_price && <p className="text-sm text-muted-foreground">{brl(product.card_price)} no cartão</p>}
+                </>
+              )}
               <div className="mt-6">
                 <p className="font-semibold mb-3">Quantidade</p>
                 <div className="flex items-center gap-5">
@@ -156,7 +205,7 @@ export default function OrderFlow() {
             <div className="max-w-md mx-auto flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-xl font-extrabold text-foreground" data-testid="step1-total" style={{ fontFamily: "Manrope" }}>{brl(total)}</p>
+                <p className="text-xl font-extrabold text-foreground" data-testid="step1-total" style={{ fontFamily: "Manrope" }}>{isBusiness ? "A combinar" : brl(subtotal)}</p>
               </div>
               <button onClick={() => setStep(2)} data-testid="continue-to-form"
                 className="h-14 px-8 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform">
@@ -231,6 +280,32 @@ export default function OrderFlow() {
               <p className="text-xs text-muted-foreground -mt-1" data-testid="card-price-note">Preço no cartão: {brl(product.card_price)} / unidade</p>
             )}
           </div>
+          {!isBusiness && (
+            <div>
+              <label className="font-medium text-sm block mb-1.5">Cupom de desconto</label>
+              <div className="flex gap-2">
+                <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} data-testid="input-coupon"
+                  className="flex-1 h-14 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring uppercase" placeholder="Ex: BEMVINDO" />
+                <button onClick={applyCoupon} data-testid="apply-coupon-button"
+                  className="h-14 px-5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors">
+                  Aplicar
+                </button>
+              </div>
+              {appliedCoupon && (
+                <p className="text-sm text-green-700 font-semibold mt-1.5 flex items-center gap-1.5" data-testid="coupon-applied">
+                  <Ticket className="w-4 h-4" /> Cupom {appliedCoupon.code}: {appliedCoupon.type === "percent" ? `${appliedCoupon.value}%` : brl(appliedCoupon.value)} de desconto
+                </p>
+              )}
+            </div>
+          )}
+          {user && availableCredit > 0 && (
+            <label className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 cursor-pointer" data-testid="use-credit-toggle">
+              <input type="checkbox" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} className="w-5 h-5 accent-[#16a34a]" data-testid="use-credit-checkbox" />
+              <span className="text-sm font-semibold text-green-800 flex items-center gap-1.5">
+                <Wallet className="w-4 h-4" /> Usar meu crédito de indicação ({brl(availableCredit)})
+              </span>
+            </label>
+          )}
           {outsideCity && (
             <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-semibold" data-testid="outside-city-error">
               Só entregamos em João Pessoa. Infelizmente não podemos atender seu endereço.
@@ -255,7 +330,7 @@ export default function OrderFlow() {
           <div className="mt-4 bg-white rounded-3xl border border-border shadow-sm p-6 space-y-4" data-testid="order-summary">
             <div className="flex justify-between items-center">
               <p className="font-semibold">{qty}x {product.name}</p>
-              <p className="font-bold">{brl(total)}</p>
+              <p className="font-bold">{isBusiness ? "A combinar" : brl(subtotal)}</p>
             </div>
             <hr className="border-border" />
             <div className="text-sm space-y-1.5 text-muted-foreground">
@@ -266,9 +341,19 @@ export default function OrderFlow() {
               {form.note && <p><strong className="text-foreground">Obs:</strong> {form.note}</p>}
             </div>
             <hr className="border-border" />
+            {!isBusiness && (couponDiscount > 0 || creditUsed > 0) && (
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
+                {couponDiscount > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-coupon-discount"><span>Cupom {appliedCoupon.code}</span><span>-{brl(couponDiscount)}</span></div>}
+                {creditUsed > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-credit-discount"><span>Crédito de indicação</span><span>-{brl(creditUsed)}</span></div>}
+              </div>
+            )}
+            {isBusiness && useCredit && availableCredit > 0 && (
+              <p className="text-sm text-green-700 font-semibold" data-testid="summary-business-credit">Crédito de {brl(availableCredit)} será informado no pedido para abater na negociação</p>
+            )}
             <div className="flex justify-between items-center">
               <p className="font-bold text-lg" style={{ fontFamily: "Manrope" }}>Total</p>
-              <p className="font-extrabold text-2xl text-primary" data-testid="summary-total" style={{ fontFamily: "Manrope" }}>{brl(total)}</p>
+              <p className="font-extrabold text-2xl text-primary" data-testid="summary-total" style={{ fontFamily: "Manrope" }}>{isBusiness ? "A combinar" : brl(total)}</p>
             </div>
           </div>
         </div>
@@ -294,6 +379,12 @@ export default function OrderFlow() {
           {result.loyalty_discount && (
             <div className="mt-4 rounded-2xl bg-orange-100 text-orange-700 font-bold p-4" data-testid="loyalty-discount-notice">
               🎁 Este pedido tem desconto de fidelidade!
+            </div>
+          )}
+          {result.referral_unlocked_now && (
+            <div className="mt-4 rounded-2xl bg-accent text-accent-foreground font-semibold p-4 text-sm flex items-start gap-2 text-left" data-testid="referral-unlocked-notice">
+              <Share2 className="w-5 h-5 shrink-0 mt-0.5" />
+              <span>Você desbloqueou o <strong>Indique e Ganhe</strong>! Compartilhe seu link em "Meus pedidos" e ganhe crédito a cada indicação.</span>
             </div>
           )}
           <div className="mt-6 space-y-3">

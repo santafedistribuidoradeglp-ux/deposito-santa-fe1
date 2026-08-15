@@ -34,13 +34,25 @@ export const AuthProvider = ({ children }) => {
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
+  const loginPhone = async (phone, password) => {
+    const res = await axios.post(`${API}/auth/login`, { phone, password }, { withCredentials: true });
+    setUser(res.data);
+    return res.data;
+  };
+
+  const register = async (payload) => {
+    const res = await axios.post(`${API}/auth/register`, payload, { withCredentials: true });
+    setUser(res.data);
+    return res.data;
+  };
+
   const logout = async () => {
     await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, loginPhone, register, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

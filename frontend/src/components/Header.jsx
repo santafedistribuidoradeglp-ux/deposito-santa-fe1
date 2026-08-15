@@ -9,20 +9,25 @@ const NAV = [
   { label: "Início", hash: "#inicio" },
   { label: "Produtos", hash: "#produtos" },
   { label: "Promoções", hash: "#promocoes" },
+  { label: "Comércios", route: "/comercios" },
   { label: "Sobre", hash: "#sobre" },
   { label: "Contato", hash: "#contato" },
 ];
 
 export const Header = () => {
-  const { user, login, logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const goTo = (hash) => {
+  const goTo = (item) => {
+    if (item.route) {
+      navigate(item.route);
+      return;
+    }
     if (location.pathname !== "/") {
-      navigate("/" + hash);
+      navigate("/" + item.hash);
     } else {
-      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+      document.querySelector(item.hash)?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -39,7 +44,7 @@ export const Header = () => {
 
         <nav className="hidden md:flex items-center gap-6">
           {NAV.map((n) => (
-            <button key={n.hash} onClick={() => goTo(n.hash)} data-testid={`nav-${n.hash.slice(1)}`}
+            <button key={n.label} onClick={() => goTo(n)} data-testid={`nav-${n.route ? n.route.slice(1) : n.hash.slice(1)}`}
               className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
               {n.label}
             </button>
@@ -79,7 +84,7 @@ export const Header = () => {
             </DropdownMenu>
           ) : (
             <button
-              onClick={login}
+              onClick={() => navigate("/entrar")}
               data-testid="login-button"
               className="h-10 px-4 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform"
             >

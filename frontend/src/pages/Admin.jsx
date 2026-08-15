@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus, Save } from "lucide-react";
+import { Pencil, Trash2, Plus, Save, Check, X, Store } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
@@ -15,6 +15,7 @@ const STATUS_LABELS = { enviado: "Enviado", em_entrega: "Em entrega", entregue: 
 const inputCls = "w-full h-12 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring";
 
 const EMPTY_PRODUCT = { name: "", price: "", card_price: "", description: "", tag: "", visual: "", image_url: "", active: true };
+const EMPTY_COUPON = { code: "", type: "fixed", value: "", first_purchase_only: false, active: true };
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -26,6 +27,11 @@ export default function Admin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pform, setPform] = useState(EMPTY_PRODUCT);
+  const [coupons, setCoupons] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
+  const [couponDialogOpen, setCouponDialogOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState(null);
+  const [cform, setCform] = useState(EMPTY_COUPON);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "admin")) navigate("/");
@@ -36,6 +42,8 @@ export default function Admin() {
     axios.get(`${API}/admin/products`, opts).then((r) => setProducts(r.data));
     axios.get(`${API}/admin/orders`, opts).then((r) => setOrders(r.data));
     axios.get(`${API}/admin/clients`, opts).then((r) => setClients(r.data));
+    axios.get(`${API}/admin/coupons`, opts).then((r) => setCoupons(r.data));
+    axios.get(`${API}/admin/businesses`, opts).then((r) => setBusinesses(r.data));
     axios.get(`${API}/settings`).then((r) => setSettings(r.data));
   }, []);
 
@@ -115,10 +123,41 @@ export default function Admin() {
         hours_sunday_open: settings.hours_sunday_open,
         hours_sunday_close: settings.hours_sunday_close,
         loyalty_discount_percent: parseFloat(settings.loyalty_discount_percent) || 10,
+        referral_credit_value: parseFloat(settings.referral_credit_value) || 5,
       }, { withCredentials: true });
       setSettings(r.data);
       toast.success("Configurações salvas!");
     } catch { toast.error("Erro ao salvar"); }
+  };
+
+  const openNewCoupon = () => { setEditingCoupon(null); setCform(EMPTY_COUPON); setCouponDialogOpen(true); };
+  const openEditCoupon = (c) => { setEditingCoupon(c); setCform({ code: c.code, type: c.type, value: c.value, first_purchase_only: c.first_purchase_only, active: c.active }); setCouponDialogOpen(true); };
+
+  const saveCoupon = async () => {
+    const body = { ...cform, value: parseFloat(cform.value) };
+    if (!body.code.trim() || isNaN(body.value)) { toast.error("Preencha código e valor"); return; }
+    try {
+      if (editingCoupon) {
+        await axios.put(`${API}/admin/coupons/${editingCoupon.id}`, body, { withCredentials: true });
+      } else {
+        await axios.post(`${API}/admin/coupons`, body, { withCredentials: true });
+      }
+      toast.success("Cupom salvo!");
+      setCouponDialogOpen(false);
+      loadAll();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar cupom"); }
+  };
+
+  const deleteCoupon = async (id) => {
+    await axios.delete(`${API}/admin/coupons/${id}`, { withCredentials: true });
+    toast.success("Cupom removido");
+    loadAll();
+  };
+
+  const setBusinessStatus = async (userId, status) => {
+    await axios.put(`${API}/admin/businesses/${userId}/status`, { status }, { withCredentials: true });
+    setBusinesses((bs) => bs.map((b) => (b.user_id === userId ? { ...b, business_status: status } : b)));
+    toast.success(status === "aprovado" ? "Comércio aprovado e publicado!" : "Status atualizado");
   };
 
   const sset = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
@@ -128,11 +167,13 @@ export default function Admin() {
       <h1 className="text-2xl font-extrabold tracking-tight mt-6" style={{ fontFamily: "Manrope" }} data-testid="admin-title">Painel Admin</h1>
 
       <Tabs defaultValue="orders" className="mt-5">
-        <TabsList className="grid grid-cols-4 w-full rounded-full h-11">
-          <TabsTrigger value="orders" className="rounded-full text-xs" data-testid="tab-orders">Pedidos</TabsTrigger>
-          <TabsTrigger value="products" className="rounded-full text-xs" data-testid="tab-products">Produtos</TabsTrigger>
-          <TabsTrigger value="clients" className="rounded-full text-xs" data-testid="tab-clients">Clientes</TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-full text-xs" data-testid="tab-settings">Config</TabsTrigger>
+        <TabsList className="w-full rounded-full h-11 flex overflow-x-auto justify-start">
+          <TabsTrigger value="orders" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-orders">Pedidos</TabsTrigger>
+          <TabsTrigger value="products" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-products">Produtos</TabsTrigger>
+          <TabsTrigger value="coupons" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-coupons">Cupons</TabsTrigger>
+          <TabsTrigger value="businesses" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-businesses">Comércios</TabsTrigger>
+          <TabsTrigger value="clients" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-clients">Clientes</TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-settings">Config</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="mt-5 space-y-3">
@@ -180,6 +221,65 @@ export default function Admin() {
           ))}
         </TabsContent>
 
+        <TabsContent value="coupons" className="mt-5 space-y-3">
+          <button onClick={openNewCoupon} data-testid="add-coupon-button"
+            className="w-full h-12 rounded-full border-2 border-dashed border-primary/50 text-primary font-bold flex items-center justify-center gap-2 hover:bg-accent transition-colors">
+            <Plus className="w-5 h-5" /> Novo cupom
+          </button>
+          {coupons.length === 0 && <p className="text-muted-foreground text-sm text-center py-6" data-testid="no-coupons">Nenhum cupom criado.</p>}
+          {coupons.map((c, i) => (
+            <div key={c.id} className="bg-white rounded-2xl border border-border p-4 flex items-center gap-3" data-testid={`admin-coupon-${i}`}>
+              <div className="flex-1 min-w-0">
+                <p className="font-extrabold text-sm tracking-widest">{c.code}</p>
+                <p className="text-sm text-primary font-bold">{c.type === "percent" ? `${c.value}% de desconto` : brl(c.value) + " de desconto"}</p>
+                <div className="flex gap-2 mt-1">
+                  <span className={`text-[10px] font-bold uppercase ${c.active ? "text-green-600" : "text-red-500"}`}>{c.active ? "Ativo" : "Inativo"}</span>
+                  {c.first_purchase_only && <span className="text-[10px] font-bold uppercase text-orange-600">1ª compra</span>}
+                </div>
+              </div>
+              <button onClick={() => openEditCoupon(c)} data-testid={`edit-coupon-${i}`} className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors"><Pencil className="w-4 h-4" /></button>
+              <button onClick={() => deleteCoupon(c.id)} data-testid={`delete-coupon-${i}`} className="w-10 h-10 rounded-full hover:bg-red-50 text-red-500 flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="businesses" className="mt-5 space-y-3">
+          {businesses.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-admin-businesses">Nenhum comércio cadastrado.</p>}
+          {businesses.map((b, i) => (
+            <div key={b.user_id} className="bg-white rounded-2xl border border-border overflow-hidden" data-testid={`admin-business-${i}`}>
+              {b.facade_path && (
+                <img src={`${API}/files/${b.facade_path}`} alt={b.business_name} className="w-full h-36 object-cover" />
+              )}
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm flex items-center gap-1.5"><Store className="w-4 h-4 text-primary shrink-0" /> {b.business_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{b.business_address}</p>
+                    <p className="text-xs text-muted-foreground">Responsável: {b.name} · {b.phone}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shrink-0 ${b.business_status === "aprovado" ? "bg-green-100 text-green-700" : b.business_status === "recusado" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-700"}`}>
+                    {b.business_status}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  {b.business_status !== "aprovado" && (
+                    <button onClick={() => setBusinessStatus(b.user_id, "aprovado")} data-testid={`approve-business-${i}`}
+                      className="flex-1 h-11 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-green-700 transition-colors">
+                      <Check className="w-4 h-4" /> Aprovar
+                    </button>
+                  )}
+                  {b.business_status !== "recusado" && (
+                    <button onClick={() => setBusinessStatus(b.user_id, "recusado")} data-testid={`reject-business-${i}`}
+                      className="flex-1 h-11 rounded-full border border-red-300 text-red-600 text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-red-50 transition-colors">
+                      <X className="w-4 h-4" /> Recusar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </TabsContent>
+
         <TabsContent value="clients" className="mt-5 space-y-3">
           {clients.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-clients">Nenhum cliente cadastrado.</p>}
           {clients.map((c, i) => (
@@ -222,9 +322,15 @@ export default function Admin() {
                   <input value={settings.hours_sunday_close} onChange={sset("hours_sunday_close")} data-testid="settings-sunday-close" className={inputCls} placeholder="12:00" />
                 </div>
               </div>
-              <div>
-                <label className="font-medium text-sm block mb-1.5">Desconto fidelidade (%)</label>
-                <input value={settings.loyalty_discount_percent} onChange={sset("loyalty_discount_percent")} type="number" data-testid="settings-loyalty-percent" className={inputCls} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-medium text-sm block mb-1.5">Desconto fidelidade (%)</label>
+                  <input value={settings.loyalty_discount_percent} onChange={sset("loyalty_discount_percent")} type="number" data-testid="settings-loyalty-percent" className={inputCls} />
+                </div>
+                <div>
+                  <label className="font-medium text-sm block mb-1.5">Crédito por indicação (R$)</label>
+                  <input value={settings.referral_credit_value ?? 5} onChange={sset("referral_credit_value")} type="number" step="0.5" data-testid="settings-referral-value" className={inputCls} />
+                </div>
               </div>
               <p className={`text-sm font-bold ${settings.store_open ? "text-green-600" : "text-red-500"}`} data-testid="settings-store-status">
                 Status atual: {settings.store_open ? "Aberta" : "Fechada"}
@@ -277,6 +383,44 @@ export default function Admin() {
               Produto ativo (visível no site)
             </label>
             <button onClick={saveProduct} data-testid="product-form-save"
+              className="w-full h-12 rounded-full bg-secondary text-white font-bold hover:bg-secondary/90 transition-colors">
+              Salvar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={couponDialogOpen} onOpenChange={setCouponDialogOpen}>
+        <DialogContent className="rounded-3xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "Manrope" }}>{editingCoupon ? "Editar cupom" : "Novo cupom"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="font-medium text-sm block mb-1.5">Código</label>
+              <input value={cform.code} onChange={(e) => setCform((f) => ({ ...f, code: e.target.value.toUpperCase() }))} data-testid="coupon-form-code" className={`${inputCls} uppercase`} placeholder="BEMVINDO" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Tipo</label>
+                <select value={cform.type} onChange={(e) => setCform((f) => ({ ...f, type: e.target.value }))} data-testid="coupon-form-type" className={inputCls}>
+                  <option value="fixed">Valor fixo (R$)</option>
+                  <option value="percent">Percentual (%)</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Valor</label>
+                <input value={cform.value} onChange={(e) => setCform((f) => ({ ...f, value: e.target.value }))} type="number" step="0.5" data-testid="coupon-form-value" className={inputCls} />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input type="checkbox" checked={cform.first_purchase_only} onChange={(e) => setCform((f) => ({ ...f, first_purchase_only: e.target.checked }))} data-testid="coupon-form-first-purchase" className="w-5 h-5 accent-[#0284c7]" />
+              Válido apenas na primeira compra
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input type="checkbox" checked={cform.active} onChange={(e) => setCform((f) => ({ ...f, active: e.target.checked }))} data-testid="coupon-form-active" className="w-5 h-5 accent-[#0284c7]" />
+              Cupom ativo
+            </label>
+            <button onClick={saveCoupon} data-testid="coupon-form-save"
               className="w-full h-12 rounded-full bg-secondary text-white font-bold hover:bg-secondary/90 transition-colors">
               Salvar
             </button>

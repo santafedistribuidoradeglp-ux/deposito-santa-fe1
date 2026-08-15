@@ -32,6 +32,15 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Endereço/telefone salvos no perfil ao pedir logado
 - Testes: backend 16/16 pass (/app/backend/tests/backend_test.py); E2E frontend ok; bug de overlay do botão qty corrigido (transform do fade-up quebrava fixed)
 
+## Atualizações (jun/2026 — indicação, cupons, comércios, auth telefone)
+- Auth: clientes/comércios usam telefone+senha (bcrypt, brute force 5 tent./15min por telefone, cookie session_token). Google agora EXCLUSIVO para admin (whitelist; outros emails recebem 403). Página /entrar com tabs Entrar/Cadastrar e tipo Cliente/Comércio
+- Indique e Ganhe: desbloqueado após comprar 1 P13 logado; link ?ref=CODIGO + QR code (backend qrcode) + botão compartilhar WhatsApp em Meus Pedidos; cada compra de P13 pelo link credita R$5 (settings.referral_credit_value, editável no admin) ao indicador; auto-indicação bloqueada; crédito usado quando o cliente quiser (checkbox no pedido, abatido do total e refletido na mensagem)
+- Cupons: admin CRUD (código, fixo/percentual, só-primeira-compra, ativo); cliente aplica no formulário. Cupom de exemplo BEMVINDO (R$10 fixo) criado — admin pode editar/excluir
+- Comércios: cadastro com foto de fachada (Emergent Object Storage, POST /api/upload/facade + GET /api/files/...), status pendente→aprovado/recusado pelo admin; vitrine pública /comercios (só aprovados); pedido de comércio = "preço a combinar" (total 0, price_negotiable, crédito informado na mensagem)
+- Pedir novamente: botão em Meus Pedidos prefill do pedido anterior e pula pro resumo
+- Foto do depósito na seção Sobre (com logo sobreposta)
+- Testes: iteração 2 — 14/15 backend pass; 3 bugs corrigidos e verificados: brute force (identifier por telefone, 429 OK), Google 403 p/ não-admin, UI de cupom/crédito que havia sido perdida em corrupção de arquivo (re-adicionada, testada E2E: R$120−R$10=R$110)
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

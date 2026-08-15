@@ -94,8 +94,8 @@ export default function Home() {
       <section id="inicio" className="bg-[#0c2d48] text-white relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-secondary/15 blur-3xl" />
         <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-primary/25 blur-3xl" />
-        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 grid md:grid-cols-2 gap-10 items-center relative">
-          <div className="fade-up text-center md:mx-auto">
+        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 relative">
+          <div className="fade-up text-center max-w-2xl mx-auto">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/10 border border-white/15 rounded-full px-4 py-2">
               <Zap className="w-3.5 h-3.5 text-secondary" /> Santa Fé Distribuidora
             </span>
@@ -121,15 +121,6 @@ export default function Home() {
                 className="h-14 px-6 rounded-full border-2 border-white/25 text-white text-lg font-bold flex items-center gap-2 hover:bg-white/10 transition-colors">
                 <MessageCircle className="w-5 h-5" /> WhatsApp
               </a>
-            </div>
-          </div>
-          <div className="hidden md:flex items-center justify-center relative fade-up" style={{ animationDelay: "150ms" }}>
-            <div className="hero-cylinder">
-              <div className="hero-cylinder-label">P13</div>
-            </div>
-            <div className="absolute top-6 right-8 bg-white text-[#0c2d48] rounded-2xl px-4 py-3 shadow-xl flex items-center gap-2 rotate-3">
-              <Truck className="w-5 h-5 text-secondary" />
-              <div className="leading-tight text-xs font-bold uppercase">Entrega<br /><span className="text-sm">Rápida</span></div>
             </div>
           </div>
         </div>

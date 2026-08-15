@@ -30,6 +30,7 @@ export default function OrderFlow() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [useCredit, setUseCredit] = useState(false);
   const [referralInfo, setReferralInfo] = useState(null);
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
   const submitted = useRef(false);
   const repeat = location.state?.repeat;
   const isBusiness = user?.account_type === "comercio";
@@ -58,6 +59,7 @@ export default function OrderFlow() {
         } : {}),
       }));
       axios.get(`${API}/referral/me`, { withCredentials: true }).then((r) => setReferralInfo(r.data)).catch(() => {});
+      axios.get(`${API}/loyalty/me`, { withCredentials: true }).then((r) => setLoyaltyInfo(r.data)).catch(() => {});
     }
   }, [user]);
 
@@ -133,8 +135,8 @@ export default function OrderFlow() {
           complement: form.complement, neighborhood: form.neighborhood, city: form.city,
         },
         note: form.note,
-        coupon_code: appliedCoupon?.code || "",
-        use_credit: useCredit,
+        coupon_code: loyaltyApplies ? "" : (appliedCoupon?.code || ""),
+        use_credit: loyaltyApplies ? false : useCredit,
         referral_code: localStorage.getItem("sf_ref") || "",
       }, { withCredentials: true });
       setResult(r.data);
@@ -156,12 +158,14 @@ export default function OrderFlow() {
     .map((p) => ({ id: p.id, name: p.name, qty: quantities[p.id], unit: priceFor(p) }));
   const totalQty = cartItems.reduce((s, it) => s + it.qty, 0);
   const subtotal = cartItems.reduce((s, it) => s + it.unit * it.qty, 0);
-  const couponDiscount = appliedCoupon && !isBusiness
+  const loyaltyApplies = Boolean(loyaltyInfo?.next_is_discount && !isBusiness);
+  const loyaltyAmount = loyaltyApplies ? Math.min(settings?.loyalty_discount_value ?? 10, subtotal) : 0;
+  const couponDiscount = appliedCoupon && !isBusiness && !loyaltyApplies
     ? (appliedCoupon.type === "percent" ? subtotal * appliedCoupon.value / 100 : Math.min(appliedCoupon.value, subtotal))
     : 0;
   const availableCredit = referralInfo?.credit || 0;
-  const creditUsed = useCredit && !isBusiness ? Math.min(availableCredit, Math.max(subtotal - couponDiscount, 0)) : 0;
-  const total = isBusiness ? 0 : Math.max(subtotal - couponDiscount - creditUsed, 0);
+  const creditUsed = useCredit && !isBusiness && !loyaltyApplies ? Math.min(availableCredit, Math.max(subtotal - couponDiscount, 0)) : 0;
+  const total = isBusiness ? 0 : Math.max(subtotal - couponDiscount - creditUsed - loyaltyAmount, 0);
 
   return (
     <div className="max-w-md mx-auto px-5 pb-32">
@@ -304,7 +308,12 @@ export default function OrderFlow() {
               <p className="text-xs text-muted-foreground -mt-1" data-testid="card-price-note">Preço no cartão: {brl(product.card_price)} / unidade</p>
             )}
           </div>
-          {!isBusiness && (
+          {loyaltyApplies && (
+            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800 font-semibold" data-testid="loyalty-applies-banner">
+              🎁 Este é seu 6º pedido: R$ 10 de desconto de fidelidade aplicado automaticamente! (não combinável com cupons ou crédito)
+            </div>
+          )}
+          {!isBusiness && !loyaltyApplies && (
             <div>
               <label className="font-medium text-sm block mb-1.5">Cupom de desconto</label>
               <div className="flex gap-2">
@@ -322,7 +331,7 @@ export default function OrderFlow() {
               )}
             </div>
           )}
-          {user && availableCredit > 0 && (
+          {user && availableCredit > 0 && !loyaltyApplies && (
             <label className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 cursor-pointer" data-testid="use-credit-toggle">
               <input type="checkbox" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} className="w-5 h-5 accent-[#16a34a]" data-testid="use-credit-checkbox" />
               <span className="text-sm font-semibold text-green-800 flex items-center gap-1.5">
@@ -369,11 +378,12 @@ export default function OrderFlow() {
               {form.note && <p><strong className="text-foreground">Obs:</strong> {form.note}</p>}
             </div>
             <hr className="border-border" />
-            {!isBusiness && (couponDiscount > 0 || creditUsed > 0) && (
+            {!isBusiness && (couponDiscount > 0 || creditUsed > 0 || loyaltyAmount > 0) && (
               <div className="text-sm space-y-1">
                 <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
                 {couponDiscount > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-coupon-discount"><span>Cupom {appliedCoupon.code}</span><span>-{brl(couponDiscount)}</span></div>}
                 {creditUsed > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-credit-discount"><span>Crédito de indicação</span><span>-{brl(creditUsed)}</span></div>}
+                {loyaltyAmount > 0 && <div className="flex justify-between text-orange-700 font-semibold" data-testid="summary-loyalty-discount"><span>🎁 Fidelidade (6º pedido)</span><span>-{brl(loyaltyAmount)}</span></div>}
               </div>
             )}
             {isBusiness && useCredit && availableCredit > 0 && (

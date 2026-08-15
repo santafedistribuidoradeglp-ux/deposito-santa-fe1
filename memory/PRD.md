@@ -54,6 +54,17 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Ranking de indicadores: top 20 por indicações com total ganho (GET /api/admin/referral-ranking, query batched com $in)
 - Deploy: deployment_agent = PASS (sem bloqueadores); .gitignore exclui test_credentials; usuário instruído a clicar em Deploy na plataforma
 
+## Atualizações (jun/2026 — roleta, fidelidade 5+1, filtros, cron mensal)
+- Roleta da sorte na Home (acima de Nossos Produtos): 5 itens 20% cada (Gire novamente / Tente mais tarde / R$5 gás / R$10 gás / R$2 água); 1 giro/24h (contador regressivo; "Gire novamente" libera novo giro); prêmios viram cupons pessoais single_use com escopo de produto (p13/agua); exige login. Endpoints: GET /api/roulette/status, POST /api/roulette/spin (429 no cooldown)
+- Fidelidade mudou: a cada 5 pedidos, o 6º tem R$10 OFF automático (settings.loyalty_discount_value, editável); NÃO combinável com cupom/crédito (backend 400 + frontend esconde campos e mostra banner). Testado: R$120→R$110 ✓, combinação bloqueada ✓
+- Cupons ganharam campos: product_scope (p13/agua), owner_user_id, single_use/used (marcado usado após pedido)
+- Filtro de pedidos no admin: chips de status + intervalo de datas (client-side)
+- Prêmio mensal do ranking: cron plataforma (.emergent/crons.yml, dia 1 03h UTC) chama POST /api/cron/ranking-bonus (Bearer WEBHOOK_CRON_SECRET, idempotente por run_id, BackgroundTasks) → nº1 de indicações do mês anterior ganha settings.ranking_bonus_value (R$10, editável no admin) + ledger + notificação. Endpoint testado manualmente ✓
+- Aviso "Fechamos em X minutos" (≤30min do fechamento) no topo da Home (settings.closing_soon/minutes_to_close)
+- Layout centralizado: hero e cabeçalhos de seção centrados
+- Instagram corrigido: @_santafedistribuidora (com underscore)
+- Imagens reais dos produtos: busca em stock (Pexels/Unsplash) não retornou fotos adequadas de botijão P13/galão 20L — mantidos os desenhos CSS; usuário pode enviar fotos reais (campo URL da foto no admin)
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

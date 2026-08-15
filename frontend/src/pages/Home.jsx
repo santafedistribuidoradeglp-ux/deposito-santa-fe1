@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { ProductVisual } from "../components/ProductVisual";
+import { Roulette } from "../components/Roulette";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const ADDRESS = "Rua Herotildes Bulhões Pinheiros, 166, Cidade Verde, João Pessoa - PB";
@@ -53,12 +54,20 @@ export default function Home() {
         </div>
       )}
 
+      {settings?.closing_soon && (
+        <div className="bg-orange-50 border-b border-orange-200 px-5 py-3" data-testid="closing-soon-banner">
+          <p className="max-w-6xl mx-auto text-sm text-orange-800 font-semibold flex items-center justify-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" /> Fechamos em {settings.minutes_to_close} minutos — envie seu pedido agora!
+          </p>
+        </div>
+      )}
+
       {/* HERO */}
       <section id="inicio" className="bg-[#0c2d48] text-white relative overflow-hidden">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-secondary/15 blur-3xl" />
         <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-primary/25 blur-3xl" />
         <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 grid md:grid-cols-2 gap-10 items-center relative">
-          <div className="fade-up">
+          <div className="fade-up text-center md:mx-auto">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/10 border border-white/15 rounded-full px-4 py-2">
               <Zap className="w-3.5 h-3.5 text-secondary" /> Santa Fé Distribuidora
             </span>
@@ -68,13 +77,13 @@ export default function Home() {
             <p className="text-white/80 mt-4 text-base md:text-lg">
               Entrega rápida e atendimento de confiança em <strong className="text-white">João Pessoa</strong>.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-sm justify-items-center sm:justify-items-start max-w-md mx-auto">
               <div className="flex items-center gap-2 text-white/85"><Truck className="w-4 h-4 text-secondary shrink-0" /> Entrega rápida e segura</div>
               <div className="flex items-center gap-2 text-white/85"><ShieldCheck className="w-4 h-4 text-secondary shrink-0" /> Produtos de qualidade</div>
               <div className="flex items-center gap-2 text-white/85"><Clock className="w-4 h-4 text-secondary shrink-0" /> Todos os dias, das 7h às 19h</div>
               <div className="flex items-center gap-2 text-white/85"><CreditCard className="w-4 h-4 text-secondary shrink-0" /> Pix, cartão e dinheiro</div>
             </div>
-            <div className="flex flex-wrap gap-3 mt-8">
+            <div className="flex flex-wrap gap-3 mt-8 justify-center">
               <button onClick={() => document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" })}
                 data-testid="hero-order-button"
                 className="h-14 px-8 rounded-full bg-secondary text-white text-lg font-bold shadow-lg shadow-secondary/30 hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform">
@@ -107,21 +116,26 @@ export default function Home() {
                 <Gift className="w-5 h-5" />
                 {loyalty.next_is_discount ? "Seu próximo pedido tem desconto de fidelidade!" : "Cartão fidelidade"}
               </p>
-              <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/10</span>
+              <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/5</span>
             </div>
             <div className="mt-3 h-2.5 bg-white/25 rounded-full overflow-hidden">
-              <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 10) * 10}%` }} />
+              <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 5) * 20}%` }} />
             </div>
             {!loyalty.next_is_discount && (
-              <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para seu desconto no 11º</p>
+              <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para R$ 10 de desconto no 6º</p>
             )}
           </div>
         </div>
       )}
 
+      {/* ROLETA */}
+      <div className="mt-10">
+        <Roulette />
+      </div>
+
       {/* PRODUTOS */}
-      <section id="produtos" className="max-w-6xl mx-auto px-5 py-16">
-        <div className="max-w-xl">
+      <section id="produtos" className="max-w-6xl mx-auto px-5 py-12">
+        <div className="max-w-xl mx-auto text-center">
           <span className="text-xs font-bold uppercase tracking-widest text-secondary">Nossos produtos</span>
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Escolha o que você precisa</h2>
           <p className="text-muted-foreground mt-2">Produtos de qualidade e preços claros. Clique em pedir e fale direto com a Santa Fé.</p>
@@ -223,7 +237,7 @@ export default function Home() {
           <div className="space-y-4 mt-8 text-sm">
             <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Endereço</strong><br />{ADDRESS}</span></div>
             <div className="flex items-start gap-3"><Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Horário</strong><br />Todos os dias, das 7h às 19h</span></div>
-            <div className="flex items-start gap-3"><Instagram className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Instagram</strong><br /><a href="https://www.instagram.com/santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline" data-testid="instagram-link">@SANTAFEDISTRIBUIDORA</a></span></div>
+            <div className="flex items-start gap-3"><Instagram className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Instagram</strong><br /><a href="https://www.instagram.com/_santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline" data-testid="instagram-link">@_SANTAFEDISTRIBUIDORA</a></span></div>
             <div className="flex items-start gap-3"><Phone className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Telefone</strong><br /><a href={`tel:+${waNumber}`} className="text-primary font-semibold hover:underline" data-testid="phone-link">(83) 99917-0131</a></span></div>
           </div>
         </div>
@@ -242,7 +256,7 @@ export default function Home() {
       {!user && (
         <div className="max-w-6xl mx-auto px-5 pb-16">
           <div className="rounded-2xl border border-dashed border-primary/40 bg-accent/50 p-6 text-center fade-up">
-            <p className="text-sm text-foreground font-medium">Entre com Google para ganhar pontos de fidelidade e salvar seu endereço — a cada 10 pedidos, o 11º tem desconto!</p>
+            <p className="text-sm text-foreground font-medium">Crie sua conta para ganhar pontos de fidelidade e salvar seu endereço — a cada 5 pedidos, o 6º tem R$ 10 de desconto!</p>
             <button onClick={login} data-testid="home-login-button" className="mt-3 h-12 px-6 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform">
               Entrar com Google
             </button>
@@ -277,7 +291,7 @@ export default function Home() {
           <div>
             <h3 className="font-bold mb-3" style={{ fontFamily: "Manrope" }}>Onde estamos</h3>
             <p className="text-sm text-white/70">{ADDRESS}</p>
-            <a href="https://www.instagram.com/santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white mt-2 inline-flex items-center gap-1.5 transition-colors" data-testid="footer-instagram-link">
+            <a href="https://www.instagram.com/_santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white mt-2 inline-flex items-center gap-1.5 transition-colors" data-testid="footer-instagram-link">
               <Instagram className="w-4 h-4" /> Instagram
             </a>
           </div>

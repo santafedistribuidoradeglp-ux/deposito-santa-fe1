@@ -35,6 +35,9 @@ export default function Admin() {
   const [resets, setResets] = useState([]);
   const [report, setReport] = useState(null);
   const [ranking, setRanking] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "admin")) navigate("/");
@@ -128,8 +131,9 @@ export default function Admin() {
         hours_weekday_close: settings.hours_weekday_close,
         hours_sunday_open: settings.hours_sunday_open,
         hours_sunday_close: settings.hours_sunday_close,
-        loyalty_discount_percent: parseFloat(settings.loyalty_discount_percent) || 10,
+        loyalty_discount_value: parseFloat(settings.loyalty_discount_value) || 10,
         referral_credit_value: parseFloat(settings.referral_credit_value) || 5,
+        ranking_bonus_value: parseFloat(settings.ranking_bonus_value) || 10,
       }, { withCredentials: true });
       setSettings(r.data);
       toast.success("Configurações salvas!");
@@ -167,6 +171,14 @@ export default function Admin() {
   };
 
   const sset = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
+
+  const filteredOrders = orders.filter((o) => {
+    if (statusFilter !== "todos" && o.status !== statusFilter) return false;
+    const d = o.created_at.slice(0, 10);
+    if (dateFrom && d < dateFrom) return false;
+    if (dateTo && d > dateTo) return false;
+    return true;
+  });
 
   return (
     <div className="max-w-md mx-auto px-5 pb-16">
@@ -247,8 +259,8 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="orders" className="mt-5 space-y-3">
-          {orders.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-admin-orders">Nenhum pedido ainda.</p>}
-          {orders.map((o, i) => (
+          {filteredOrders.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-admin-orders">Nenhum pedido encontrado.</p>}
+          {filteredOrders.map((o, i) => (
             <div key={o.id} className="bg-white rounded-2xl border border-border p-4" data-testid={`admin-order-${i}`}>
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
@@ -415,13 +427,17 @@ export default function Admin() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-medium text-sm block mb-1.5">Desconto fidelidade (%)</label>
-                  <input value={settings.loyalty_discount_percent} onChange={sset("loyalty_discount_percent")} type="number" data-testid="settings-loyalty-percent" className={inputCls} />
+                  <label className="font-medium text-sm block mb-1.5">Fidelidade no 6º pedido (R$)</label>
+                  <input value={settings.loyalty_discount_value ?? 10} onChange={sset("loyalty_discount_value")} type="number" step="0.5" data-testid="settings-loyalty-value" className={inputCls} />
                 </div>
                 <div>
                   <label className="font-medium text-sm block mb-1.5">Crédito por indicação (R$)</label>
                   <input value={settings.referral_credit_value ?? 5} onChange={sset("referral_credit_value")} type="number" step="0.5" data-testid="settings-referral-value" className={inputCls} />
                 </div>
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Prêmio mensal do nº 1 do ranking (R$)</label>
+                <input value={settings.ranking_bonus_value ?? 10} onChange={sset("ranking_bonus_value")} type="number" step="0.5" data-testid="settings-ranking-bonus" className={inputCls} />
               </div>
               <p className={`text-sm font-bold ${settings.store_open ? "text-green-600" : "text-red-500"}`} data-testid="settings-store-status">
                 Status atual: {settings.store_open ? "Aberta" : "Fechada"}

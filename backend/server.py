@@ -1,10 +1,11 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, BackgroundTasks
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
 import io
+import hmac
 import logging
 import uuid
 import secrets
@@ -195,8 +196,9 @@ class SettingsInput(BaseModel):
     hours_weekday_close: str
     hours_sunday_open: str
     hours_sunday_close: str
-    loyalty_discount_percent: float = 10.0
+    loyalty_discount_value: float = 10.0
     referral_credit_value: float = 5.0
+    ranking_bonus_value: float = 10.0
 
 
 # ---------- Auth helpers ----------
@@ -420,6 +422,16 @@ def store_is_open(settings: dict) -> bool:
 async def get_settings():
     s = await db.settings.find_one({"key": "store"}, {"_id": 0})
     s["store_open"] = store_is_open(s)
+    s["closing_soon"] = False
+    s["minutes_to_close"] = None
+    if s["store_open"]:
+        now = datetime.now(LOCAL_TZ)
+        close = s["hours_sunday_close"] if now.weekday() == 6 else s["hours_weekday_close"]
+        ch, cm = map(int, close.split(":"))
+        minutes_left = (ch * 60 + cm) - (now.hour * 60 + now.minute)
+        if 0 < minutes_left <= 30:
+            s["closing_soon"] = True
+            s["minutes_to_close"] = minutes_left
     return s
 
 
@@ -440,7 +452,7 @@ def format_brl(value: float) -> str:
     return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def build_whatsapp_message(order: dict, loyalty: bool, discount_percent: float) -> str:
+def build_whatsapp_message(order: dict, loyalty: bool) -> str:
     lines = ["*NOVO PEDIDO - Santa Fé Distribuidora*", ""]
     if order.get("account_type") == "comercio":
         lines.append("*Tipo:* COMÉRCIO (preço a combinar)")
@@ -465,6 +477,8 @@ def build_whatsapp_message(order: dict, loyalty: bool, discount_percent: float) 
             lines.append(f"Cupom {order.get('coupon_code','')}: -{format_brl(order['coupon_discount'])}")
         if order.get("credit_used", 0) > 0:
             lines.append(f"Crédito de indicação: -{format_brl(order['credit_used'])}")
+        if order.get("loyalty_amount", 0) > 0:
+            lines.append(f"Fidelidade (6º pedido): -{format_brl(order['loyalty_amount'])}")
         lines.append(f"*Total: {format_brl(order['total'])}*")
     lines.append(f"*Pagamento:* {order['payment_method']}")
     a = order["address"]
@@ -479,12 +493,16 @@ def build_whatsapp_message(order: dict, loyalty: bool, discount_percent: float) 
         lines.append(f"📣 Veio por indicação (código {order['referred_by_code']})")
     if loyalty:
         lines.append("")
-        lines.append(f"🎁 *Cliente tem desconto de fidelidade ({discount_percent:.0f}%)!*")
+        lines.append("🎁 *Cliente usou o desconto de fidelidade (6º pedido)!*")
     return "\n".join(lines)
 
 
 def has_p13(items) -> bool:
     return any("p13" in normalize(i.name) for i in items)
+
+
+def has_agua(items) -> bool:
+    return any("agua" in normalize(i.name) for i in items)
 
 
 @api_router.post("/orders")
@@ -500,12 +518,29 @@ async def create_order(body: OrderInput, request: Request):
 
     subtotal = 0.0 if is_business else sum(i.price * i.qty for i in body.items)
 
+    loyalty = False
+    loyalty_amount = 0.0
+    if user and not is_business and user.get("order_count", 0) % 6 == 5:
+        loyalty = True
+        if body.coupon_code or body.use_credit:
+            raise HTTPException(status_code=400, detail="O desconto de fidelidade não pode ser combinado com cupom ou crédito de indicação")
+        loyalty_amount = round(min(float(settings.get("loyalty_discount_value", 10.0)), subtotal), 2)
+
     coupon_discount = 0.0
     coupon_code = ""
+    coupon = None
     if body.coupon_code and not is_business:
         coupon = await db.coupons.find_one({"code": body.coupon_code.strip().upper(), "active": True}, {"_id": 0})
         if not coupon:
             raise HTTPException(status_code=400, detail="Cupom inválido ou inativo")
+        if coupon.get("single_use") and coupon.get("used"):
+            raise HTTPException(status_code=400, detail="Este cupom já foi utilizado")
+        if coupon.get("owner_user_id") and (not user or user["user_id"] != coupon["owner_user_id"]):
+            raise HTTPException(status_code=400, detail="Este cupom é pessoal — faça login com a conta que o ganhou")
+        if coupon.get("product_scope") == "p13" and not has_p13(body.items):
+            raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com botijão de gás P13")
+        if coupon.get("product_scope") == "agua" and not has_agua(body.items):
+            raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com água mineral")
         if coupon.get("first_purchase_only"):
             if not user:
                 raise HTTPException(status_code=400, detail="Cupom de primeira compra: faça login para usar")
@@ -521,12 +556,7 @@ async def create_order(body: OrderInput, request: Request):
             credit_used = available if is_business else min(available, max(subtotal - coupon_discount, 0))
             credit_used = round(credit_used, 2)
 
-    total = 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used, 0), 2)
-
-    loyalty = False
-    if user and not is_business:
-        if user.get("order_count", 0) % 11 == 10:
-            loyalty = True
+    total = 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used - loyalty_amount, 0), 2)
 
     referred_by_code = ""
     ref_code = body.referral_code.strip().upper()
@@ -558,6 +588,7 @@ async def create_order(body: OrderInput, request: Request):
         "coupon_code": coupon_code,
         "coupon_discount": coupon_discount,
         "credit_used": credit_used,
+        "loyalty_amount": loyalty_amount,
         "total": total,
         "price_negotiable": is_business,
         "payment_method": body.payment_method,
@@ -569,6 +600,9 @@ async def create_order(body: OrderInput, request: Request):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.orders.insert_one({**order})
+
+    if coupon and coupon.get("single_use"):
+        await db.coupons.update_one({"id": coupon["id"]}, {"$set": {"used": True}})
 
     if user:
         updates = {"$inc": {"order_count": 1}, "$set": {"phone": body.phone, "saved_address": body.address.model_dump()}}
@@ -582,8 +616,7 @@ async def create_order(body: OrderInput, request: Request):
             updates["$set"]["referral_unlocked"] = True
         await db.users.update_one({"user_id": user["user_id"]}, updates)
 
-    discount_percent = settings.get("loyalty_discount_percent", 10.0)
-    message = build_whatsapp_message(order, loyalty, discount_percent)
+    message = build_whatsapp_message(order, loyalty)
     number = settings["whatsapp_number"]
     whatsapp_url = f"https://wa.me/{number}?text={urllib.parse.quote(message)}"
     unlocked_now = bool(user and not user.get("referral_unlocked") and has_p13(body.items))
@@ -600,12 +633,13 @@ async def my_orders(user: dict = Depends(require_user)):
 @api_router.get("/loyalty/me")
 async def loyalty_me(user: dict = Depends(require_user)):
     count = user.get("order_count", 0)
-    cycle = count % 11
+    cycle = count % 6
     return {
         "order_count": count,
         "cycle_progress": cycle,
-        "next_is_discount": cycle == 10,
-        "remaining": 10 - cycle if cycle < 10 else 0,
+        "cycle_size": 5,
+        "next_is_discount": cycle == 5,
+        "remaining": 5 - cycle if cycle < 5 else 0,
     }
 
 
@@ -867,6 +901,108 @@ async def serve_file(path: str):
     return Response(content=data, media_type=record.get("content_type", content_type))
 
 
+# ---------- Roleta ----------
+ROULETTE_PRIZES = [
+    {"label": "Gire novamente", "type": "respin"},
+    {"label": "Tente mais tarde", "type": "none"},
+    {"label": "R$ 5 no gás", "type": "coupon", "value": 5.0, "scope": "p13"},
+    {"label": "R$ 10 no gás", "type": "coupon", "value": 10.0, "scope": "p13"},
+    {"label": "R$ 2 na água", "type": "coupon", "value": 2.0, "scope": "agua"},
+]
+
+
+def spin_seconds_remaining(user: dict) -> int:
+    if user.get("spin_free"):
+        return 0
+    last = user.get("last_spin_at")
+    if not last:
+        return 0
+    elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+    return max(0, int(86400 - elapsed))
+
+
+@api_router.get("/roulette/status")
+async def roulette_status(user: dict = Depends(require_user)):
+    coupons = await db.coupons.find(
+        {"owner_user_id": user["user_id"], "single_use": True, "used": False, "active": True}, {"_id": 0}
+    ).to_list(20)
+    return {"seconds_remaining": spin_seconds_remaining(user), "prizes": [p["label"] for p in ROULETTE_PRIZES], "my_coupons": coupons}
+
+
+@api_router.post("/roulette/spin")
+async def roulette_spin(user: dict = Depends(require_user)):
+    remaining = spin_seconds_remaining(user)
+    if remaining > 0:
+        raise HTTPException(status_code=429, detail=f"Tente novamente em {remaining // 3600}h{(remaining % 3600) // 60:02d}min")
+    idx = secrets.randbelow(5)
+    prize = ROULETTE_PRIZES[idx]
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_spin_at": now_iso, "spin_free": prize["type"] == "respin"}})
+    coupon_code = None
+    if prize["type"] == "coupon":
+        coupon_code = f"ROLETA{secrets.token_hex(2).upper()}"
+        await db.coupons.insert_one({
+            "id": str(uuid.uuid4()), "code": coupon_code, "type": "fixed", "value": prize["value"],
+            "first_purchase_only": False, "active": True, "product_scope": prize["scope"],
+            "owner_user_id": user["user_id"], "single_use": True, "used": False,
+            "label": prize["label"], "created_at": now_iso,
+        })
+    return {
+        "prize_index": idx,
+        "label": prize["label"],
+        "type": prize["type"],
+        "coupon_code": coupon_code,
+        "seconds_remaining": 0 if prize["type"] == "respin" else 86400,
+    }
+
+
+# ---------- Cron: prêmio mensal do ranking ----------
+async def award_monthly_bonus():
+    now = datetime.now(timezone.utc)
+    first_this = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    prev_month_end = first_this.isoformat()
+    prev_month_start = (first_this - timedelta(days=1)).replace(day=1).isoformat()
+    pipeline = [
+        {"$match": {"created_at": {"$gte": prev_month_start, "$lt": prev_month_end}}},
+        {"$group": {"_id": "$user_id", "indications": {"$sum": 1}}},
+        {"$sort": {"indications": -1}},
+        {"$limit": 1},
+    ]
+    rows = await db.referral_events.aggregate(pipeline).to_list(1)
+    if not rows:
+        return
+    winner_id = rows[0]["_id"]
+    settings = await db.settings.find_one({"key": "store"}, {"_id": 0})
+    bonus = float(settings.get("ranking_bonus_value", 10.0))
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.users.update_one({"user_id": winner_id}, {"$inc": {"referral_credit": bonus}})
+    await db.credit_ledger.insert_one({
+        "id": str(uuid.uuid4()), "user_id": winner_id, "type": "ganho", "amount": bonus,
+        "description": "🏆 Prêmio: nº 1 do ranking de indicações do mês", "created_at": now_iso,
+    })
+    await db.referral_events.insert_one({
+        "id": str(uuid.uuid4()), "user_id": winner_id, "amount": bonus,
+        "from_name": "Prêmio do ranking mensal", "seen": False, "created_at": now_iso,
+    })
+
+
+@api_router.post("/cron/ranking-bonus")
+async def cron_ranking_bonus(request: Request, background_tasks: BackgroundTasks):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    secret = os.environ.get("WEBHOOK_CRON_SECRET", "")
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else ""
+    if not secret or not hmac.compare_digest(token, secret):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    run_id = request.headers.get("X-Webhook-Id", "") or str(uuid.uuid4())
+    existing = await db.cron_runs.find_one({"run_id": run_id})
+    if existing:
+        return {"ok": True, "duplicate": True}
+    await db.cron_runs.insert_one({"run_id": run_id, "job": "ranking-bonus", "at": datetime.now(timezone.utc).isoformat()})
+    background_tasks.add_task(award_monthly_bonus)
+    return {"ok": True}
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Santa Fe API"}
@@ -892,8 +1028,9 @@ async def seed():
             "hours_weekday_close": "19:00",
             "hours_sunday_open": "07:00",
             "hours_sunday_close": "19:00",
-            "loyalty_discount_percent": 10.0,
+            "loyalty_discount_value": 10.0,
             "referral_credit_value": 5.0,
+            "ranking_bonus_value": 10.0,
         })
     await db.settings.update_one({"key": "store", "referral_credit_value": {"$exists": False}}, {"$set": {"referral_credit_value": 5.0}})
     await db.users.create_index("phone")

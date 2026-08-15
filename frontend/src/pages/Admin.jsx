@@ -134,6 +134,8 @@ export default function Admin() {
         loyalty_discount_value: parseFloat(settings.loyalty_discount_value) || 10,
         referral_credit_value: parseFloat(settings.referral_credit_value) || 5,
         ranking_bonus_value: parseFloat(settings.ranking_bonus_value) || 10,
+        promo_title: settings.promo_title || "",
+        promo_text: settings.promo_text || "",
       }, { withCredentials: true });
       setSettings(r.data);
       toast.success("Configurações salvas!");
@@ -438,6 +440,15 @@ export default function Admin() {
               <div>
                 <label className="font-medium text-sm block mb-1.5">Prêmio mensal do nº 1 do ranking (R$)</label>
                 <input value={settings.ranking_bonus_value ?? 10} onChange={sset("ranking_bonus_value")} type="number" step="0.5" data-testid="settings-ranking-bonus" className={inputCls} />
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Título da faixa de promoções</label>
+                <input value={settings.promo_title ?? ""} onChange={sset("promo_title")} data-testid="settings-promo-title" className={inputCls} placeholder="Em breve, ofertas especiais..." />
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Texto da faixa de promoções</label>
+                <textarea value={settings.promo_text ?? ""} onChange={sset("promo_text")} data-testid="settings-promo-text" rows={2}
+                  className="w-full rounded-xl border border-input px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Descreva a promoção atual" />
               </div>
               <p className={`text-sm font-bold ${settings.store_open ? "text-green-600" : "text-red-500"}`} data-testid="settings-store-status">
                 Status atual: {settings.store_open ? "Aberta" : "Fechada"}

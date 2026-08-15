@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { ProductVisual } from "../components/ProductVisual";
-import { Roulette } from "../components/Roulette";
+import { toast } from "sonner";
+import { Ticket } from "lucide-react";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const ADDRESS = "Rua Herotildes Bulhões Pinheiros, 166, Cidade Verde, João Pessoa - PB";
@@ -16,9 +17,27 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loyalty, setLoyalty] = useState(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState(null);
+  const [couponError, setCouponError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const { user, login } = useAuth();
+
+  const checkCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponResult(null);
+    setCouponError("");
+    try {
+      const r = await axios.post(`${API}/coupons/validate`, { code: couponCode }, { withCredentials: true });
+      setCouponResult(r.data);
+      localStorage.setItem("sf_coupon", r.data.code);
+      toast.success(`Cupom ${r.data.code} validado!`);
+    } catch (err) {
+      setCouponError(err.response?.data?.detail || "Cupom inválido");
+      localStorage.removeItem("sf_coupon");
+    }
+  };
 
   useEffect(() => {
     axios.get(`${API}/products`).then((r) => setProducts(r.data));
@@ -128,11 +147,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ROLETA */}
-      <div className="mt-10">
-        <Roulette />
-      </div>
-
       {/* PRODUTOS */}
       <section id="produtos" className="max-w-6xl mx-auto px-5 py-12">
         <div className="max-w-xl mx-auto text-center">
@@ -144,7 +158,9 @@ export default function Home() {
           {products.map((p, i) => (
             <article key={p.id} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up flex flex-col" style={{ animationDelay: `${i * 90}ms` }} data-testid={`product-card-${i}`}>
               {p.image_url ? (
-                <img src={p.image_url} alt={p.name} className="w-full h-[190px] object-cover" />
+                <div className="w-full h-[190px] bg-white flex items-center justify-center p-3 border-b border-border">
+                  <img src={p.image_url} alt={p.name} className="max-h-full max-w-full object-contain" />
+                </div>
               ) : (
                 <ProductVisual visual={p.visual} name={p.name} />
               )}
@@ -172,6 +188,31 @@ export default function Home() {
         </div>
       </section>
 
+      {/* CUPOM */}
+      <section id="cupom" className="max-w-6xl mx-auto px-5 pb-12">
+        <div className="max-w-xl mx-auto rounded-3xl bg-white border border-border shadow-sm p-6 md:p-8 text-center" data-testid="coupon-box">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-secondary">
+            <Ticket className="w-4 h-4" /> Tem um cupom?
+          </span>
+          <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Valide seu cupom de desconto</h2>
+          <p className="text-sm text-muted-foreground mt-1">Ele será aplicado automaticamente no seu próximo pedido.</p>
+          <div className="flex gap-2 mt-5 max-w-sm mx-auto">
+            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} data-testid="home-coupon-input"
+              className="flex-1 h-14 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring uppercase" placeholder="Ex: BEMVINDO" />
+            <button onClick={checkCoupon} data-testid="home-coupon-apply"
+              className="h-14 px-6 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors">
+              Validar
+            </button>
+          </div>
+          {couponResult && (
+            <p className="text-sm font-bold text-green-700 mt-3" data-testid="home-coupon-valid">
+              ✅ Cupom {couponResult.code} válido: {couponResult.type === "percent" ? `${couponResult.value}%` : brl(couponResult.value)} de desconto{couponResult.product_scope === "p13" ? " (em pedidos com gás P13)" : couponResult.product_scope === "agua" ? " (em pedidos com água)" : ""} — já ficará aplicado no seu pedido!
+            </p>
+          )}
+          {couponError && <p className="text-sm font-semibold text-red-600 mt-3" data-testid="home-coupon-error">{couponError}</p>}
+        </div>
+      </section>
+
       {/* PROMOÇÕES */}
       <section id="promocoes" className="max-w-6xl mx-auto px-5 pb-16">
         <div className="rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 text-white p-8 md:p-10 flex flex-col md:flex-row md:items-center gap-6 justify-between shadow-lg">
@@ -179,8 +220,8 @@ export default function Home() {
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/20 rounded-full px-4 py-1.5">
               <Flame className="w-3.5 h-3.5" /> Promoções
             </span>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }}>Em breve, ofertas especiais da Santa Fé.</h2>
-            <p className="text-white/90 mt-2">Vamos usar este espaço para destacar as melhores ofertas e facilitar ainda mais seus pedidos.</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }} data-testid="promo-title">{settings?.promo_title || "Em breve, ofertas especiais da Santa Fé."}</h2>
+            <p className="text-white/90 mt-2" data-testid="promo-text">{settings?.promo_text || "Vamos usar este espaço para destacar as melhores ofertas e facilitar ainda mais seus pedidos."}</p>
           </div>
           <a href={waLink("Olá! Gostaria de saber quais são as promoções de hoje.")} target="_blank" rel="noopener noreferrer" data-testid="promo-whatsapp-link"
             className="h-14 px-7 rounded-full bg-white text-orange-600 font-bold flex items-center justify-center gap-2 shrink-0 hover:bg-orange-50 active:scale-[0.98] transition-colors transition-transform">

@@ -199,6 +199,8 @@ class SettingsInput(BaseModel):
     loyalty_discount_value: float = 10.0
     referral_credit_value: float = 5.0
     ranking_bonus_value: float = 10.0
+    promo_title: str = ""
+    promo_text: str = ""
 
 
 # ---------- Auth helpers ----------
@@ -901,59 +903,7 @@ async def serve_file(path: str):
     return Response(content=data, media_type=record.get("content_type", content_type))
 
 
-# ---------- Roleta ----------
-ROULETTE_PRIZES = [
-    {"label": "Gire novamente", "type": "respin"},
-    {"label": "Tente mais tarde", "type": "none"},
-    {"label": "R$ 5 no gás", "type": "coupon", "value": 5.0, "scope": "p13"},
-    {"label": "R$ 10 no gás", "type": "coupon", "value": 10.0, "scope": "p13"},
-    {"label": "R$ 2 na água", "type": "coupon", "value": 2.0, "scope": "agua"},
-]
-
-
-def spin_seconds_remaining(user: dict) -> int:
-    if user.get("spin_free"):
-        return 0
-    last = user.get("last_spin_at")
-    if not last:
-        return 0
-    elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds()
-    return max(0, int(86400 - elapsed))
-
-
-@api_router.get("/roulette/status")
-async def roulette_status(user: dict = Depends(require_user)):
-    coupons = await db.coupons.find(
-        {"owner_user_id": user["user_id"], "single_use": True, "used": False, "active": True}, {"_id": 0}
-    ).to_list(20)
-    return {"seconds_remaining": spin_seconds_remaining(user), "prizes": [p["label"] for p in ROULETTE_PRIZES], "my_coupons": coupons}
-
-
-@api_router.post("/roulette/spin")
-async def roulette_spin(user: dict = Depends(require_user)):
-    remaining = spin_seconds_remaining(user)
-    if remaining > 0:
-        raise HTTPException(status_code=429, detail=f"Tente novamente em {remaining // 3600}h{(remaining % 3600) // 60:02d}min")
-    idx = secrets.randbelow(5)
-    prize = ROULETTE_PRIZES[idx]
-    now_iso = datetime.now(timezone.utc).isoformat()
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_spin_at": now_iso, "spin_free": prize["type"] == "respin"}})
-    coupon_code = None
-    if prize["type"] == "coupon":
-        coupon_code = f"ROLETA{secrets.token_hex(2).upper()}"
-        await db.coupons.insert_one({
-            "id": str(uuid.uuid4()), "code": coupon_code, "type": "fixed", "value": prize["value"],
-            "first_purchase_only": False, "active": True, "product_scope": prize["scope"],
-            "owner_user_id": user["user_id"], "single_use": True, "used": False,
-            "label": prize["label"], "created_at": now_iso,
-        })
-    return {
-        "prize_index": idx,
-        "label": prize["label"],
-        "type": prize["type"],
-        "coupon_code": coupon_code,
-        "seconds_remaining": 0 if prize["type"] == "respin" else 86400,
-    }
+# ---------- Roleta removida (a pedido do usuário) ----------
 
 
 # ---------- Cron: prêmio mensal do ranking ----------
@@ -1031,6 +981,8 @@ async def seed():
             "loyalty_discount_value": 10.0,
             "referral_credit_value": 5.0,
             "ranking_bonus_value": 10.0,
+            "promo_title": "Em breve, ofertas especiais da Santa Fé.",
+            "promo_text": "Vamos usar este espaço para destacar as melhores ofertas e facilitar ainda mais seus pedidos.",
         })
     await db.settings.update_one({"key": "store", "referral_credit_value": {"$exists": False}}, {"$set": {"referral_credit_value": 5.0}})
     await db.users.create_index("phone")

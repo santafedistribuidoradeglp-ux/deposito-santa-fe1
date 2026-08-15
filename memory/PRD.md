@@ -65,6 +65,12 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Instagram corrigido: @_santafedistribuidora (com underscore)
 - Imagens reais dos produtos: busca em stock (Pexels/Unsplash) não retornou fotos adequadas de botijão P13/galão 20L — mantidos os desenhos CSS; usuário pode enviar fotos reais (campo URL da foto no admin)
 
+## Atualizações (jun/2026 — fotos reais, cupom na home, promo editável, admin por telefone)
+- Fotos reais dos produtos aplicadas (enviadas pelo usuário): /images/gas-p13.jpg, agua-sublime.jpeg, agua-itacoatiara.png — exibidas com object-contain (fundo branco) na Home e no carrinho
+- Roleta REMOVIDA a pedido do usuário (componente + endpoints); no lugar, seção "Tem um cupom?" abaixo dos produtos: valida via POST /api/coupons/validate e salva em localStorage sf_coupon → pré-preenchido no checkout (removido ao aplicar)
+- Faixa de promoções editável: settings.promo_title/promo_text (campos no admin Config), Home lê das settings
+- Admin por telefone: 83988331044 / santafe2026 (role admin, login em /entrar) — atualizado em test_credentials.md
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

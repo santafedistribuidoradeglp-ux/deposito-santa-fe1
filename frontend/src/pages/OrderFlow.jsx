@@ -26,7 +26,7 @@ export default function OrderFlow() {
   const [cepError, setCepError] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(() => localStorage.getItem("sf_coupon") || "");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [useCredit, setUseCredit] = useState(false);
   const [referralInfo, setReferralInfo] = useState(null);
@@ -113,6 +113,7 @@ export default function OrderFlow() {
     try {
       const r = await axios.post(`${API}/coupons/validate`, { code: couponCode }, { withCredentials: true });
       setAppliedCoupon(r.data);
+      localStorage.removeItem("sf_coupon");
       toast.success(`Cupom ${r.data.code} aplicado!`);
     } catch (err) {
       setAppliedCoupon(null);
@@ -196,7 +197,7 @@ export default function OrderFlow() {
                   <div className="flex items-center gap-4 p-4">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-contain bg-white p-1" />
                       ) : (
                         <div className="scale-[0.45] origin-top-left w-[222px] h-[222px]"><ProductVisual visual={p.visual} name={p.name} /></div>
                       )}

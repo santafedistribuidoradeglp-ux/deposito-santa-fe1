@@ -291,7 +291,7 @@ export default function Home() {
                   data-testid={`portaria-button-${i}`}
                   className="mt-2.5 w-full h-12 rounded-full border-2 border-primary text-primary text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-accent active:scale-[0.98] transition-colors transition-transform"
                 >
-                  <MapPin className="w-4 h-4" /> Portaria: {isGdp ? "Grátis" : p.name.toLowerCase().includes("água") || p.name.toLowerCase().includes("agua") ? brl(10) : brl(100)}
+                  <MapPin className="w-4 h-4" /> Portaria: {p.pickup_price != null ? brl(p.pickup_price) : "Grátis"}
                 </button>
               </div>
             </article>

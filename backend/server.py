@@ -149,6 +149,7 @@ class Product(BaseModel):
     name: str
     price: float
     card_price: Optional[float] = None
+    pickup_price: Optional[float] = None
     description: str = ""
     tag: str = ""
     visual: str = ""
@@ -160,6 +161,7 @@ class ProductInput(BaseModel):
     name: str
     price: float
     card_price: Optional[float] = None
+    pickup_price: Optional[float] = None
     description: str = ""
     tag: str = ""
     visual: str = ""

@@ -87,7 +87,7 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Seção Gás do Povo recolorida: gradiente verde (emerald→green) com kicker e CTA amarelos (identidade do programa do Governo)
 - "Tem um cupom?" recolorido: card azul-marinho (#0c2d48) com badge laranja e glow
 - Ícone do "Pedir agora" trocado de balão (MessageCircle) para carrinho (ShoppingCart)
-- Botão "Portaria" abaixo de Pedir agora em cada card: Gás R$100 / Água R$10 / Gás do Povo Grátis (valores fixos no frontend); clique rola até #contato (Google Maps) para o cliente se dirigir à portaria
+- Botão "Portaria" abaixo de Pedir agora em cada card: preço vem do campo pickup_price do produto (editável no admin; vazio = Grátis). Valores atuais: Gás R$100 / Águas R$10 / GDP Grátis; clique rola até #contato (Google Maps) para o cliente se dirigir à portaria
 - card_price do Gás P13 removido (DB null) — mostra e cobra só R$120
 
 ## Pendente do usuário

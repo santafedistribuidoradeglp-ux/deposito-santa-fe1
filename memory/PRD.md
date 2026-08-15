@@ -21,10 +21,13 @@ Site/PWA para pedidos de gás e água via WhatsApp. React + FastAPI + MongoDB.
 - 2026-06 (fork atual):
   - Revisão de qualidade de código aplicada: create_order() e build_whatsapp_message() refatoradas em helpers (_wa_*, _auto_gdp_coupon, _resolve_manual_coupon, _coupon_discount_value, _grant_referral_credit, _apply_post_order_updates) sem mudar comportamento/textos; catches do Admin.jsx com toast de erro; loadAll com tratamento de falha; ternários aninhados → lookup maps (RANK_STYLES, BUSINESS_STATUS_STYLES, FOOTER_NAV_LABELS); código morto removido (loyaltyApplies, cache da roleta); card de incentivo de login corrigido (texto 3 pedidos + botão vai para /entrar)
   - Regressão iteration_5.json: 41/41 backend PASS, frontend E2E PASS
-  - NOVO: Excluir pedido no admin — DELETE /api/admin/orders/{id} + botão lixeira (data-testid delete-order-N) com window.confirm; testado via curl (200/404/401) e screenshot
-  - Admin 83988331044 recriado no banco (havia sido apagado por testes); pedidos de teste limpos do banco
+  - Excluir pedido no admin — DELETE /api/admin/orders/{id} + botão lixeira (delete-order-N) com confirm; testado (200/404/401)
+  - Auth Google admin revisada: whitelist ADMIN_EMAILS ativa (403 p/ não autorizados, 401 sessão inválida) — conforme playbook Emergent Auth
+  - Alarme sonoro de novo pedido: banner vermelho fixo (new-order-alert) + beep repetido a cada 4s até o admin clicar "Ver pedidos" (abre aba Pedidos); poll imediato na montagem + a cada 20s; testado E2E
+  - BUG CRÍTICO CORRIGIDO: pedido de usuário logado sobrescrevia o telefone da conta (credencial de login!) com o telefone digitado no pedido — agora só salva phone se a conta não tiver (usuários Google); foi isso que "apagou" o admin 2x
+  - Admin 83988331044 restaurado (user_id user_a7e1ef1321b5, duplicata removida); pedidos de teste limpos
+  - deployment_agent: PASS, sem bloqueadores — pronto para o usuário clicar em Deploy
 
 ## Backlog
-- P1: Revalidar fluxo Google admin (/api/auth/session — finding da iteration 2)
 - P2: Verificar execução real do cron do prêmio mensal do ranking
-- P2: Deploy definitivo (usuário ainda não confirmou; app passou no deployment_agent sem bloqueadores)
+- P2: Deploy definitivo — checagem PASS; falta o usuário acionar o botão Deploy na plataforma

@@ -41,6 +41,22 @@ export default function Admin() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [tab, setTab] = useState("report");
+  const [alertCount, setAlertCount] = useState(0);
+
+  const beep = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880; gain.gain.value = 0.2;
+      osc.start(); osc.stop(ctx.currentTime + 0.35);
+      setTimeout(() => ctx.close(), 600);
+    } catch (err) {
+      console.error("Falha ao tocar aviso sonoro:", err);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "admin")) navigate("/");
@@ -69,25 +85,13 @@ export default function Admin() {
   const knownIds = useRef(null);
   useEffect(() => {
     if (user?.role !== "admin") return;
-    const beep = () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 880; gain.gain.value = 0.15;
-        osc.start(); osc.stop(ctx.currentTime + 0.25);
-      } catch (err) {
-        console.error("Falha ao tocar aviso sonoro:", err);
-      }
-    };
     const poll = async () => {
       try {
         const r = await axios.get(`${API}/admin/orders`, { withCredentials: true });
         if (knownIds.current) {
           const news = r.data.filter((o) => !knownIds.current.has(o.id));
           if (news.length > 0) {
-            toast.success(`🔔 ${news.length} novo${news.length > 1 ? "s" : ""} pedido${news.length > 1 ? "s" : ""} recebido${news.length > 1 ? "s" : ""}!`, { duration: 8000 });
+            setAlertCount((c) => c + news.length);
             beep();
             setOrders(r.data);
           }
@@ -97,9 +101,21 @@ export default function Admin() {
         console.error("Falha ao verificar novos pedidos:", err);
       }
     };
+    poll();
     const interval = setInterval(poll, 20000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, beep]);
+
+  useEffect(() => {
+    if (alertCount === 0) return;
+    const interval = setInterval(beep, 4000);
+    return () => clearInterval(interval);
+  }, [alertCount, beep]);
+
+  const acknowledgeAlert = () => {
+    setAlertCount(0);
+    setTab("orders");
+  };
 
   if (loading || !user || user.role !== "admin") return null;
 
@@ -211,9 +227,22 @@ export default function Admin() {
 
   return (
     <div className="max-w-md mx-auto px-5 pb-16">
+      {alertCount > 0 && (
+        <div className="fixed top-16 left-0 right-0 z-50 px-4" data-testid="new-order-alert">
+          <div className="max-w-md mx-auto rounded-2xl bg-red-600 text-white shadow-2xl p-4 flex items-center justify-between gap-3 animate-pulse">
+            <p className="font-extrabold text-sm" style={{ fontFamily: "Manrope" }}>
+              🔔 {alertCount} novo{alertCount > 1 ? "s" : ""} pedido{alertCount > 1 ? "s" : ""} recebido{alertCount > 1 ? "s" : ""}!
+            </p>
+            <button onClick={acknowledgeAlert} data-testid="new-order-alert-ack"
+              className="h-10 px-4 rounded-full bg-white text-red-600 text-sm font-extrabold shrink-0 hover:bg-red-50 transition-colors">
+              Ver pedidos
+            </button>
+          </div>
+        </div>
+      )}
       <h1 className="text-2xl font-extrabold tracking-tight mt-6" style={{ fontFamily: "Manrope" }} data-testid="admin-title">Painel Admin</h1>
 
-      <Tabs defaultValue="report" className="mt-5">
+      <Tabs value={tab} onValueChange={setTab} className="mt-5">
         <TabsList className="w-full rounded-full h-11 flex overflow-x-auto justify-start">
           <TabsTrigger value="report" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-report">Resumo</TabsTrigger>
           <TabsTrigger value="orders" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-orders">Pedidos</TabsTrigger>

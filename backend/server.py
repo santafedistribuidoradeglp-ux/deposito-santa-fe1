@@ -595,7 +595,9 @@ async def _grant_referral_credit(body: "OrderInput", user, settings: dict) -> st
 
 
 async def _apply_post_order_updates(body: "OrderInput", user, settings: dict, credit_used: float, auto_coupon_code: str, is_business: bool):
-    updates = {"$inc": {"order_count": 1}, "$set": {"phone": body.phone, "saved_address": body.address.model_dump()}}
+    updates = {"$inc": {"order_count": 1}, "$set": {"saved_address": body.address.model_dump()}}
+    if not user.get("phone"):
+        updates["$set"]["phone"] = body.phone
     if credit_used > 0:
         updates["$inc"]["referral_credit"] = -credit_used
         await db.credit_ledger.insert_one({

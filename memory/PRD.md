@@ -27,6 +27,7 @@ Site/PWA para pedidos de gás e água via WhatsApp. React + FastAPI + MongoDB.
   - BUG CRÍTICO CORRIGIDO: pedido de usuário logado sobrescrevia o telefone da conta (credencial de login!) com o telefone digitado no pedido — agora só salva phone se a conta não tiver (usuários Google); foi isso que "apagou" o admin 2x
   - Admin 83988331044 restaurado (user_id user_a7e1ef1321b5, duplicata removida); pedidos de teste limpos
   - deployment_agent: PASS, sem bloqueadores — pronto para o usuário clicar em Deploy
+  - Base ZERADA para lançamento (2026-06): 0 pedidos, só o admin como usuário, contadores/créditos/indicações zerados; mantidos: 4 produtos, settings, cupons PRIMEIRACOMPRA e GASDOPOVO10; smoke test final OK (API 200, 4 produtos, login admin ok)
 
 ## Backlog
 - P2: Verificar execução real do cron do prêmio mensal do ranking

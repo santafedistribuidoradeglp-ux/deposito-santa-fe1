@@ -83,6 +83,13 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - "Tem um cupom?" movido para ACIMA dos produtos; produtos em grade 2x2 na ordem: P13, Gás do Povo, Água Itacoatiara, Água Sublime (campo sort_order)
 - Testes: iteração 3 (8/8 backend + frontend 100%) e iteração 4 (10/10, revalidação da mensagem WhatsApp sem emoji corrompido e sem texto legado "6º pedido")
 
+## Atualizações (jun/2026 — cores GDP/cupom, portaria, ícone carrinho)
+- Seção Gás do Povo recolorida: gradiente verde (emerald→green) com kicker e CTA amarelos (identidade do programa do Governo)
+- "Tem um cupom?" recolorido: card azul-marinho (#0c2d48) com badge laranja e glow
+- Ícone do "Pedir agora" trocado de balão (MessageCircle) para carrinho (ShoppingCart)
+- Botão "Portaria" abaixo de Pedir agora em cada card: Gás R$100 / Água R$10 / Gás do Povo Grátis (valores fixos no frontend); clique rola até #contato (Google Maps) para o cliente se dirigir à portaria
+- card_price do Gás P13 removido (DB null) — mostra e cobra só R$120
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

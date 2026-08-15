@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   Clock, MapPin, Gift, Truck, ShieldCheck, CreditCard, MessageCircle,
-  Zap, Instagram, Phone, Flame,
+  Zap, Instagram, Phone, Flame, ShoppingCart,
 } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { ProductVisual } from "../components/ProductVisual";
@@ -146,9 +146,9 @@ export default function Home() {
 
       {/* GÁS DO POVO */}
       <section id="gasdopovo" className="max-w-6xl mx-auto px-5 pt-10">
-        <div className="rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 text-white p-6 md:p-8 shadow-lg" data-testid="gdp-section">
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-600 to-green-800 text-white p-6 md:p-8 shadow-lg" data-testid="gdp-section">
           <div className="text-center">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/20 rounded-full px-4 py-1.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-yellow-400 text-green-900 rounded-full px-4 py-1.5">
               <Flame className="w-3.5 h-3.5" /> Gás do Povo
             </span>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }}>Somos revenda credenciada do Gás do Povo</h2>
@@ -178,13 +178,13 @@ export default function Home() {
               )}
             </div>
             <a href="https://gasdopovo.mds.gov.br" target="_blank" rel="noopener noreferrer" data-testid="gdp-consult-link"
-              className="w-full h-12 rounded-full bg-white text-orange-600 text-sm font-bold flex items-center justify-center hover:bg-orange-50 transition-colors">
+              className="w-full h-12 rounded-full bg-white text-green-800 text-sm font-bold flex items-center justify-center hover:bg-green-50 transition-colors">
               Consulte seu benefício
             </a>
           </div>
           <div className="text-center mt-5">
             <button onClick={goToGdp} data-testid="gdp-order-button"
-              className="h-13 px-8 py-3 rounded-full bg-[#0c2d48] text-white font-bold hover:bg-[#0c2d48]/85 active:scale-[0.98] transition-colors transition-transform">
+              className="h-13 px-8 py-3 rounded-full bg-yellow-400 text-green-900 font-extrabold hover:bg-yellow-300 active:scale-[0.98] transition-colors transition-transform">
               Já tenho o benefício, quero solicitar →
             </button>
           </div>
@@ -214,12 +214,13 @@ export default function Home() {
 
       {/* CUPOM */}
       <section id="cupom" className="max-w-6xl mx-auto px-5 pt-10">
-        <div className="max-w-xl mx-auto rounded-3xl bg-white border border-border shadow-sm p-6 md:p-8 text-center" data-testid="coupon-box">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-secondary">
+        <div className="max-w-xl mx-auto rounded-3xl bg-[#0c2d48] text-white shadow-lg p-6 md:p-8 text-center relative overflow-hidden" data-testid="coupon-box">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-secondary/20 blur-2xl" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-secondary text-white rounded-full px-4 py-1.5 relative">
             <Ticket className="w-4 h-4" /> Tem um cupom?
           </span>
-          <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Valide seu cupom de desconto</h2>
-          <p className="text-sm text-muted-foreground mt-1">Ele será aplicado automaticamente no seu próximo pedido.</p>
+          <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-3 relative" style={{ fontFamily: "Manrope" }}>Valide seu cupom de desconto</h2>
+          <p className="text-sm text-white/70 mt-1 relative">Ele será aplicado automaticamente no seu próximo pedido.</p>
           <div className="flex gap-2 mt-5 max-w-sm mx-auto">
             <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} data-testid="home-coupon-input"
               className="flex-1 h-14 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring uppercase" placeholder="Ex: BEMVINDO" />
@@ -229,11 +230,11 @@ export default function Home() {
             </button>
           </div>
           {couponResult && (
-            <p className="text-sm font-bold text-green-700 mt-3" data-testid="home-coupon-valid">
+            <p className="text-sm font-bold text-green-300 mt-3 relative" data-testid="home-coupon-valid">
               ✅ Cupom {couponResult.code} válido: {couponResult.type === "percent" ? `${couponResult.value}%` : brl(couponResult.value)} de desconto — já ficará aplicado no seu pedido!
             </p>
           )}
-          {couponError && <p className="text-sm font-semibold text-red-600 mt-3" data-testid="home-coupon-error">{couponError}</p>}
+          {couponError && <p className="text-sm font-semibold text-red-300 mt-3 relative" data-testid="home-coupon-error">{couponError}</p>}
         </div>
       </section>
 
@@ -283,7 +284,14 @@ export default function Home() {
                   data-testid={`order-button-${i}`}
                   className="mt-5 w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform flex items-center justify-center gap-2"
                 >
-                  <MessageCircle className="w-5 h-5" /> Pedir agora
+                  <ShoppingCart className="w-5 h-5" /> Pedir agora
+                </button>
+                <button
+                  onClick={() => document.querySelector("#contato")?.scrollIntoView({ behavior: "smooth" })}
+                  data-testid={`portaria-button-${i}`}
+                  className="mt-2.5 w-full h-12 rounded-full border-2 border-primary text-primary text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-accent active:scale-[0.98] transition-colors transition-transform"
+                >
+                  <MapPin className="w-4 h-4" /> Portaria: {isGdp ? "Grátis" : p.name.toLowerCase().includes("água") || p.name.toLowerCase().includes("agua") ? brl(10) : brl(100)}
                 </button>
               </div>
             </article>

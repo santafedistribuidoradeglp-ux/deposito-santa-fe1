@@ -76,7 +76,7 @@ class TestAuthPhone:
         d = r.json()
         assert d["phone"] == phone
         assert d["referral_code"].startswith("SF")
-        assert d["referral_unlocked"] is False
+        assert d["referral_unlocked"] == False
         assert d["referral_credit"] == 0.0
         assert d["role"] == "customer"
         # cookie set
@@ -245,10 +245,10 @@ class TestOrderFeatures:
             r = requests.post(f"{API}/orders", json=body, headers=auth_headers(tok))
             assert r.status_code == 200, r.text
             d = r.json()
-            assert d["referral_unlocked_now"] is True
+            assert d["referral_unlocked_now"] == True
             # user now has referral_unlocked True
             udb = db.users.find_one({"user_id": u["user_id"]})
-            assert udb["referral_unlocked"] is True
+            assert udb["referral_unlocked"] == True
         finally:
             _cleanup_user(u["user_id"])
 
@@ -344,7 +344,7 @@ class TestOrderFeatures:
             assert resp.status_code == 200, resp.text
             o = resp.json()["order"]
             assert o["total"] == 0.0
-            assert o["price_negotiable"] is True
+            assert o["price_negotiable"] == True
             import urllib.parse
             msg = urllib.parse.unquote(resp.json()["whatsapp_url"])
             assert "combinar" in msg.lower()
@@ -360,7 +360,7 @@ class TestReferralEndpoints:
             r = requests.get(f"{API}/referral/me", headers=auth_headers(tok))
             assert r.status_code == 200
             d = r.json()
-            assert d["unlocked"] is False
+            assert d["unlocked"] == False
             assert d["code"].startswith("SF")
             assert d["credit"] == 0.0
             assert d["credit_value"] == 5.0

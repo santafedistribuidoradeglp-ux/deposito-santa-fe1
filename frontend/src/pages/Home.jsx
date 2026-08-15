@@ -12,6 +12,7 @@ import { Ticket } from "lucide-react";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const ADDRESS = "Rua Herotildes Bulhões Pinheiros, 166, Cidade Verde, João Pessoa - PB";
+const FOOTER_NAV_LABELS = { inicio: "Início", gasdopovo: "Gás do Povo", produtos: "produtos", sobre: "sobre", contato: "contato" };
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -24,7 +25,7 @@ export default function Home() {
   const [highlightGdp, setHighlightGdp] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
   const goToGdp = () => {
     setHighlightGdp(true);
@@ -367,9 +368,9 @@ export default function Home() {
       {!user && (
         <div className="max-w-6xl mx-auto px-5 pb-16">
           <div className="rounded-2xl border border-dashed border-primary/40 bg-accent/50 p-6 text-center fade-up">
-            <p className="text-sm text-foreground font-medium">Crie sua conta para ganhar pontos de fidelidade e salvar seu endereço — a cada 5 pedidos, o 6º tem R$ 10 de desconto!</p>
-            <button onClick={login} data-testid="home-login-button" className="mt-3 h-12 px-6 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform">
-              Entrar com Google
+            <p className="text-sm text-foreground font-medium">Crie sua conta para ganhar pontos de fidelidade e salvar seu endereço — a cada 3 pedidos você ganha um cupom grátis!</p>
+            <button onClick={() => navigate("/entrar")} data-testid="home-login-button" className="mt-3 h-12 px-6 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform">
+              Criar conta / Entrar
             </button>
           </div>
         </div>
@@ -395,7 +396,7 @@ export default function Home() {
             {["inicio", "gasdopovo", "produtos", "sobre", "contato"].map((s) => (
               <button key={s} onClick={() => document.querySelector(`#${s}`)?.scrollIntoView({ behavior: "smooth" })}
                 className="text-sm text-white/70 hover:text-white block capitalize transition-colors" data-testid={`footer-nav-${s}`}>
-                {s === "inicio" ? "Início" : s === "gasdopovo" ? "Gás do Povo" : s}
+                {FOOTER_NAV_LABELS[s]}
               </button>
             ))}
           </div>

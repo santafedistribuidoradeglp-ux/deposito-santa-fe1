@@ -14,6 +14,9 @@ const STATUSES = ["enviado", "em_entrega", "entregue", "cancelado"];
 const STATUS_LABELS = { enviado: "Enviado", em_entrega: "Em entrega", entregue: "Entregue", cancelado: "Cancelado" };
 const inputCls = "w-full h-12 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring";
 
+const RANK_STYLES = ["bg-amber-100 text-amber-700", "bg-gray-100 text-gray-600", "bg-orange-100 text-orange-700"];
+const BUSINESS_STATUS_STYLES = { aprovado: "bg-green-100 text-green-700", recusado: "bg-red-100 text-red-600" };
+
 const EMPTY_PRODUCT = { name: "", price: "", card_price: "", pickup_price: "", description: "", tag: "", visual: "", image_url: "", active: true };
 const EMPTY_COUPON = { code: "", type: "fixed", value: "", first_purchase_only: false, active: true };
 
@@ -44,16 +47,19 @@ export default function Admin() {
   }, [loading, user, navigate]);
 
   const loadAll = useCallback(() => {
-    const opts = { withCredentials: true };
-    axios.get(`${API}/admin/products`, opts).then((r) => setProducts(r.data));
-    axios.get(`${API}/admin/orders`, opts).then((r) => setOrders(r.data));
-    axios.get(`${API}/admin/clients`, opts).then((r) => setClients(r.data));
-    axios.get(`${API}/admin/coupons`, opts).then((r) => setCoupons(r.data));
-    axios.get(`${API}/admin/businesses`, opts).then((r) => setBusinesses(r.data));
-    axios.get(`${API}/admin/password-resets`, opts).then((r) => setResets(r.data));
-    axios.get(`${API}/admin/report?days=7`, opts).then((r) => setReport(r.data));
-    axios.get(`${API}/admin/referral-ranking`, opts).then((r) => setRanking(r.data));
-    axios.get(`${API}/settings`).then((r) => setSettings(r.data));
+    const fetchInto = (path, setter) =>
+      axios.get(`${API}${path}`, { withCredentials: true })
+        .then((r) => setter(r.data))
+        .catch((err) => console.error(`Falha ao carregar ${path}:`, err));
+    fetchInto("/admin/products", setProducts);
+    fetchInto("/admin/orders", setOrders);
+    fetchInto("/admin/clients", setClients);
+    fetchInto("/admin/coupons", setCoupons);
+    fetchInto("/admin/businesses", setBusinesses);
+    fetchInto("/admin/password-resets", setResets);
+    fetchInto("/admin/report?days=7", setReport);
+    fetchInto("/admin/referral-ranking", setRanking);
+    fetchInto("/settings", setSettings);
   }, []);
 
   useEffect(() => {
@@ -71,7 +77,9 @@ export default function Admin() {
         osc.connect(gain); gain.connect(ctx.destination);
         osc.frequency.value = 880; gain.gain.value = 0.15;
         osc.start(); osc.stop(ctx.currentTime + 0.25);
-      } catch {}
+      } catch (err) {
+        console.error("Falha ao tocar aviso sonoro:", err);
+      }
     };
     const poll = async () => {
       try {
@@ -85,7 +93,9 @@ export default function Admin() {
           }
         }
         knownIds.current = new Set(r.data.map((o) => o.id));
-      } catch {}
+      } catch (err) {
+        console.error("Falha ao verificar novos pedidos:", err);
+      }
     };
     const interval = setInterval(poll, 20000);
     return () => clearInterval(interval);
@@ -108,19 +118,32 @@ export default function Admin() {
       toast.success("Produto salvo!");
       setDialogOpen(false);
       loadAll();
-    } catch { toast.error("Erro ao salvar produto"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar produto"); }
   };
 
   const deleteProduct = async (id) => {
-    await axios.delete(`${API}/admin/products/${id}`, { withCredentials: true });
-    toast.success("Produto removido");
-    loadAll();
+    try {
+      await axios.delete(`${API}/admin/products/${id}`, { withCredentials: true });
+      toast.success("Produto removido");
+      loadAll();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao remover produto"); }
   };
 
   const setOrderStatus = async (id, status) => {
-    await axios.put(`${API}/admin/orders/${id}/status`, { status }, { withCredentials: true });
-    setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)));
-    toast.success("Status atualizado");
+    try {
+      await axios.put(`${API}/admin/orders/${id}/status`, { status }, { withCredentials: true });
+      setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)));
+      toast.success("Status atualizado");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao atualizar status"); }
+  };
+
+  const deleteOrder = async (id) => {
+    if (!window.confirm("Excluir este pedido permanentemente? Ele sairá dos resumos e relatórios.")) return;
+    try {
+      await axios.delete(`${API}/admin/orders/${id}`, { withCredentials: true });
+      setOrders((os) => os.filter((o) => o.id !== id));
+      toast.success("Pedido excluído");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao excluir pedido"); }
   };
 
   const saveSettings = async () => {
@@ -139,7 +162,7 @@ export default function Admin() {
       }, { withCredentials: true });
       setSettings(r.data);
       toast.success("Configurações salvas!");
-    } catch { toast.error("Erro ao salvar"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar"); }
   };
 
   const openNewCoupon = () => { setEditingCoupon(null); setCform(EMPTY_COUPON); setCouponDialogOpen(true); };
@@ -161,15 +184,19 @@ export default function Admin() {
   };
 
   const deleteCoupon = async (id) => {
-    await axios.delete(`${API}/admin/coupons/${id}`, { withCredentials: true });
-    toast.success("Cupom removido");
-    loadAll();
+    try {
+      await axios.delete(`${API}/admin/coupons/${id}`, { withCredentials: true });
+      toast.success("Cupom removido");
+      loadAll();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao remover cupom"); }
   };
 
   const setBusinessStatus = async (userId, status) => {
-    await axios.put(`${API}/admin/businesses/${userId}/status`, { status }, { withCredentials: true });
-    setBusinesses((bs) => bs.map((b) => (b.user_id === userId ? { ...b, business_status: status } : b)));
-    toast.success(status === "aprovado" ? "Comércio aprovado e publicado!" : "Status atualizado");
+    try {
+      await axios.put(`${API}/admin/businesses/${userId}/status`, { status }, { withCredentials: true });
+      setBusinesses((bs) => bs.map((b) => (b.user_id === userId ? { ...b, business_status: status } : b)));
+      toast.success(status === "aprovado" ? "Comércio aprovado e publicado!" : "Status atualizado");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao atualizar comércio"); }
   };
 
   const sset = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
@@ -244,7 +271,7 @@ export default function Admin() {
               <div className="space-y-2.5">
                 {ranking.map((r, i) => (
                   <div key={r.phone || i} className="flex items-center gap-3" data-testid={`ranking-item-${i}`}>
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 ${RANK_STYLES[i] || "bg-muted text-muted-foreground"}`}>{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm truncate">{r.name} {r.account_type === "comercio" && <span className="text-[10px] font-bold text-primary uppercase">comércio</span>}</p>
                       <p className="text-xs text-muted-foreground">{r.phone}</p>
@@ -272,7 +299,13 @@ export default function Admin() {
                   <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")} · {o.payment_method}</p>
                   {o.loyalty_discount && <p className="text-xs font-bold text-orange-600 mt-1">🎁 Desconto de fidelidade</p>}
                 </div>
-                <p className="font-extrabold text-primary shrink-0" style={{ fontFamily: "Manrope" }}>{brl(o.total)}</p>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <p className="font-extrabold text-primary" style={{ fontFamily: "Manrope" }}>{brl(o.total)}</p>
+                  <button onClick={() => deleteOrder(o.id)} data-testid={`delete-order-${i}`}
+                    className="w-9 h-9 rounded-full hover:bg-red-50 text-red-500 flex items-center justify-center transition-colors" title="Excluir pedido">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div className="flex gap-1.5 mt-3 flex-wrap">
                 {STATUSES.map((s) => (
@@ -341,7 +374,7 @@ export default function Admin() {
                     <p className="text-xs text-muted-foreground mt-0.5">{b.business_address}</p>
                     <p className="text-xs text-muted-foreground">Responsável: {b.name} · {b.phone}</p>
                   </div>
-                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shrink-0 ${b.business_status === "aprovado" ? "bg-green-100 text-green-700" : b.business_status === "recusado" ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-700"}`}>
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shrink-0 ${BUSINESS_STATUS_STYLES[b.business_status] || "bg-amber-100 text-amber-700"}`}>
                     {b.business_status}
                   </span>
                 </div>

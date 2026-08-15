@@ -160,7 +160,6 @@ export default function OrderFlow() {
     .map((p) => ({ id: p.id, name: p.name, qty: quantities[p.id], unit: priceFor(p) }));
   const totalQty = cartItems.reduce((s, it) => s + it.qty, 0);
   const subtotal = cartItems.reduce((s, it) => s + it.unit * it.qty, 0);
-  const loyaltyApplies = false;
   const hasGdp = cartItems.some((it) => it.name.toLowerCase().includes("gás do povo") || it.name.toLowerCase().includes("gas do povo"));
   const couponDiscount = appliedCoupon && !isBusiness
     ? (appliedCoupon.type === "percent" ? subtotal * appliedCoupon.value / 100 : Math.min(appliedCoupon.value, subtotal))
@@ -319,7 +318,7 @@ export default function OrderFlow() {
               <p className="text-xs text-muted-foreground mt-1.5">Adianta a verificação do benefício pelo nosso atendente.</p>
             </div>
           )}
-          {!isBusiness && !loyaltyApplies && (
+          {!isBusiness && (
             <div>
               <label className="font-medium text-sm block mb-1.5">Cupom de desconto</label>
               <div className="flex gap-2">
@@ -337,7 +336,7 @@ export default function OrderFlow() {
               )}
             </div>
           )}
-          {user && availableCredit > 0 && !loyaltyApplies && (
+          {user && availableCredit > 0 && (
             <label className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 cursor-pointer" data-testid="use-credit-toggle">
               <input type="checkbox" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} className="w-5 h-5 accent-[#16a34a]" data-testid="use-credit-checkbox" />
               <span className="text-sm font-semibold text-green-800 flex items-center gap-1.5">

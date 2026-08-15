@@ -33,7 +33,7 @@ export default function Businesses() {
           </div>
         ) : (
           businesses.map((b, i) => (
-            <article key={i} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up" style={{ animationDelay: `${i * 70}ms` }} data-testid={`business-card-${i}`}>
+            <article key={b.business_name || i} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up" style={{ animationDelay: `${i * 70}ms` }} data-testid={`business-card-${i}`}>
               {b.facade_url ? (
                 <img src={`${process.env.REACT_APP_BACKEND_URL}${b.facade_url}`} alt={b.business_name} className="w-full h-44 object-cover" />
               ) : (

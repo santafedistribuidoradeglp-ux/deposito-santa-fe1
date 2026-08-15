@@ -114,7 +114,7 @@ def test_loyalty_coupon_generated_on_third_order(session, user_id):
         return await _mongo().coupons.find_one({"code": lc["code"]}, {"_id": 0})
     coupon = asyncio.new_event_loop().run_until_complete(_fetch())
     assert coupon["owner_user_id"] == user_id
-    assert coupon["single_use"] is True
+    assert coupon["single_use"] == True
     assert coupon["type"] == "fixed"
 
 
@@ -148,7 +148,7 @@ def test_gdp_auto_coupon_first_purchase(session, user_id):
     assert order["coupon_discount"] == 10.0
     assert order["total"] == 10.0
     assert order["cpf"] == "12345678901"
-    assert order.get("is_gas_do_povo") is True
+    assert order.get("is_gas_do_povo") == True
     wa = body["whatsapp_url"]
     from urllib.parse import unquote
     msg = unquote(wa)

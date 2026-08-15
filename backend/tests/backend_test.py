@@ -84,8 +84,8 @@ class TestProducts:
         assert any("gua" in n or "20L" in n for n in names)
         # verify prices
         for p in data:
-            if "P13" in p["name"] or "Botij" in p["name"]:
-                assert p["price"] == 110.0
+            if ("P13" in p["name"] or "Botij" in p["name"]) and "Povo" not in p["name"]:
+                assert p["price"] == 120.0
             if "20L" in p["name"]:
                 assert p["price"] == 12.0
 
@@ -177,11 +177,11 @@ class TestAuth:
 
 # ---------- Loyalty ----------
 class TestLoyalty:
-    def test_11th_order_gets_discount(self, customer_session):
-        # set order_count to 10 → next order = 11th = discount
-        db.users.update_one({"user_id": customer_session["user_id"]}, {"$set": {"order_count": 10}})
+    def test_third_order_yields_loyalty_coupon(self, customer_session):
+        # set order_count to 2 → next order = 3rd → new_count%4==3 → FIEL coupon generated
+        db.users.update_one({"user_id": customer_session["user_id"]}, {"$set": {"order_count": 2}})
         products = requests.get(f"{API}/products").json()
-        p = products[0]
+        p = next(pr for pr in products if "Povo" not in pr["name"])  # non-GDP
         body = {
             "customer_name": "TEST Loyal", "phone": "83988",
             "items": [{"product_id": p["id"], "name": p["name"], "price": p["price"], "qty": 1}],
@@ -191,15 +191,13 @@ class TestLoyalty:
         r = requests.post(f"{API}/orders", json=body, headers=auth_headers(customer_session["token"]))
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["loyalty_discount"] is True
-        # message url encoded but should contain 'fidelidade'
-        import urllib.parse
-        decoded = urllib.parse.unquote(d["whatsapp_url"])
-        assert "fidelidade" in decoded.lower() or "desconto" in decoded.lower()
+        assert d.get("loyalty_coupon") is not None
+        assert d["loyalty_coupon"]["code"].startswith("FIEL")
+        assert d["loyalty_coupon"]["value"] == 10
 
     def test_order_count_increments(self, customer_session):
         u = db.users.find_one({"user_id": customer_session["user_id"]})
-        assert u["order_count"] >= 11
+        assert u["order_count"] >= 3
 
 
 # ---------- Admin ----------

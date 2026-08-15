@@ -122,7 +122,7 @@ def test_p13_guest_order_message_clean():
     body = r.json()
     order = body["order"]
     assert order["total"] == 120.0
-    assert order.get("is_gas_do_povo") is False
+    assert order.get("is_gas_do_povo") == False
 
     wa = body["whatsapp_url"]
     msg = unquote(wa.split("?text=", 1)[1])

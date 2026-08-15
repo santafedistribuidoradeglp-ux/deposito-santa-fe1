@@ -1,0 +1,138 @@
+{
+  "project_name": "Santa Fe v1 \u2014 Dep\u00f3sito de G\u00e1s",
+  "theme": "light",
+  "audience": "Housewives ordering via smartphone (Mobile-First, large buttons, minimal friction).",
+  "typography": {
+    "headings": {
+      "font_family": "Manrope, sans-serif",
+      "instruction": "Use for all H1, H2, H3. Apply tracking-tight for all headings > 24px. Do NOT use Inter for headings."
+    },
+    "body": {
+      "font_family": "Figtree, sans-serif",
+      "instruction": "Use for body text, inputs, labels, and small text. Prioritize readability. Minimum body size 16px (text-base) for accessibility."
+    },
+    "weights": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "bold": 700,
+      "black": 900
+    },
+    "hierarchy_rules": "No jump between heading and subheading should exceed 2 Tailwind scale steps. H1 max is text-4xl on mobile, text-5xl on desktop."
+  },
+  "colors": {
+    "archetype": "ORGANIC & ENERGETIC",
+    "palette": {
+      "primary": {
+        "DEFAULT": "#0284c7",
+        "foreground": "#ffffff",
+        "description": "Vivid Blue - represents water, trust, and cleanliness."
+      },
+      "secondary": {
+        "DEFAULT": "#f97316",
+        "foreground": "#ffffff",
+        "description": "Energetic Orange - used strictly for high-conversion CTAs (e.g., Pedir no WhatsApp). Do not overuse."
+      },
+      "background": "#fafaf9",
+      "foreground": "#1c1917",
+      "card": "#ffffff",
+      "card_foreground": "#1c1917",
+      "border": "#e7e5e4",
+      "muted": "#f5f5f4",
+      "muted_foreground": "#78716c",
+      "success": "#16a34a",
+      "warning": "#eab308"
+    },
+    "rules": [
+      "Never use pure black or pure white except for primary text/background.",
+      "Orange (#f97316) is ONLY for primary actions ('Pedir', 'Confirmar').",
+      "Blue (#0284c7) is for trust elements (App bar, Meus Pedidos, active states).",
+      "Ensure 4.5:1 contrast ratio for all text. Use APCA guidelines."
+    ]
+  },
+  "layouts": {
+    "mobile_first": "The entire application must be constrained to a mobile-like container (max-w-md mx-auto) on desktop to simulate the PWA experience natively.",
+    "spacing": "Use generous spacing. Tailwind scale: p-4, p-6, p-8. Cards must have at least p-6. No cramped elements.",
+    "header": "Solid background (bg-white or bg-primary). NEVER transparent. Must have a bottom border or shadow.",
+    "bottom_navigation": "Use a sticky bottom bar for the 'Resumo / Continuar' action in the order flow.",
+    "grids": "Use 1-column layouts primarily for mobile. Product cards can be 2-col on larger screens, but stack on small mobile screens."
+  },
+  "components": {
+    "buttons": {
+      "shape": "rounded-full (pill shape)",
+      "size": "Massive touch targets. Default height h-14 (56px). text-lg font-bold.",
+      "motion": "Add active:scale-[0.98] transition-transform for tactile feedback.",
+      "states": "Clearly define hover, active, and disabled states."
+    },
+    "cards": {
+      "shape": "rounded-2xl or rounded-3xl",
+      "surface": "Solid background, 1px subtle border (border-border), soft shadow (shadow-sm). No heavy drop shadows.",
+      "internal_spacing": "Minimum p-5 or p-6."
+    },
+    "inputs": {
+      "size": "h-14, rounded-xl",
+      "text": "text-base (prevents iOS auto-zoom).",
+      "labels": "Clear, placed above the input. Bold or semi-bold (font-medium text-foreground)."
+    }
+  },
+  "motion": {
+    "rules": [
+      "Micro-animations on all interactive elements (hover, focus, active).",
+      "Do NOT use 'transition-all'. Use specific transition properties (e.g., transition-colors, transition-transform).",
+      "Stagger list items slightly on entrance.",
+      "Respect prefers-reduced-motion."
+    ]
+  },
+  "accessibility": {
+    "testing": "CRITICAL: All interactive elements MUST include a 'data-testid' attribute (e.g., data-testid='order-button-gas', data-testid='input-cep').",
+    "tap_targets": "Minimum 48x48px for any clickable element.",
+    "forms": "Use appropriate HTML5 input types (tel, number, text). CEP input must trigger numeric keypad on mobile."
+  },
+  "media": {
+    "image_urls": {
+      "gas_cylinder": {
+        "url": "https://images.unsplash.com/photo-1503027470001-baf3fb214fe5",
+        "description": "Propane tank/Gas cylinder image for the P13 product card.",
+        "category": "product"
+      },
+      "mineral_water": {
+        "url": "https://images.pexels.com/photos/11860562/pexels-photo-11860562.jpeg",
+        "description": "Clear plastic bottles with blue caps representing 20L mineral water gallons.",
+        "category": "product"
+      }
+    },
+    "rules": [
+      "Never use placeholder URLs.",
+      "Use object-cover for all product images to ensure they fill their container neatly.",
+      "Image constraints: Product images should be large and appetizing/clear, max-h-[200px] on cards."
+    ]
+  },
+  "visual_enhancers": {
+    "icons": "Use 'lucide-react' for clean, consistent UI iconography. Large stroke-width (2px or 2.5px) for friendliness.",
+    "badges": "Use soft backgrounds (e.g., bg-orange-100 text-orange-700) for labels like 'Promo\u00e7\u00e3o' or 'Desconto'."
+  },
+  "instructions_to_main_agent": [
+    "Prioritize a clean, mobile-first PWA structure. Center the app container on desktop (e.g., max-w-md mx-auto min-h-screen border-x bg-white).",
+    "Keep the user flow extremely linear: Home (Products) -> Select Quantity -> Checkout Form -> WhatsApp Redirect.",
+    "Implement the ViaCEP integration for the 'CEP' field to auto-fill Address, Neighborhood, and City.",
+    "Do NOT force users to log in on the first purchase. Make 'Login com Google' a prominent but optional button in the menu or post-purchase.",
+    "Fidelity program: Visually represent the '10 orders -> 11th free/discounted' as a progress bar or stamp card in the 'Meus Pedidos' area.",
+    "Add a banner for 'Loja Fechada' (Store Closed) if the current time is outside operating hours (handled by admin settings).",
+    "Block orders (disable submit) if the returned ViaCEP city is not 'Jo\u00e3o Pessoa'.",
+    "Admin Panel should be a protected route (/admin) validating against a whitelist of emails.",
+    "All interactive and key informational elements MUST include a data-testid attribute in kebab-case format.",
+    "Use Shadcn UI components but heavily customize their border-radii (make them rounder) and heights to match the mobile-first requirement.",
+    "Use 'sonner' for toast notifications (e.g., Address found, CEP invalid)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements excluding transforms.",
+    "You MUST NOT center align the app container in a way that disrupts the human natural reading flow of text. Use max-w-md mx-auto for the layout constraint, but text should be left-aligned mostly.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like \ud83e\udd16\ud83e\udde0\ud83d\udcad\ud83d\udca1\ud83d\udd2e\ud83c\udfaf etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap."
+  ]
+}

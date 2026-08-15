@@ -1,0 +1,52 @@
+{
+  "summary": "Santa Fe v1: backend (16/16 pytest passing) and frontend E2E all core flows working. Found 1 UI bug (mobile qty controls overlapped by fixed bottom bar) and 1 UX gap (ViaCEP invalid CEP treated as 'CEP não encontrado' but the message only appears when erro:true; when logradouro is empty for a partial CEP, the flow just silently keeps street blank — user won't know why continue-to-summary is disabled).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "OrderFlow step 1 (mobile)",
+        "issue": "Fixed bottom bar with 'Continuar' button (data-testid=continue-to-form) overlaps qty-increase/qty-decrease buttons on 390x844 mobile viewport. Users cannot increase quantity — clicks are intercepted by the bottom bar. Verified: qty-increase bounding box y=477-533 vs continue-to-form container y≈486-542. Playwright reports 'continue-to-form ... subtree intercepts pointer events'. Real mobile users will silently press 'Continuar' when trying to tap +.",
+        "selector": "[data-testid=\"qty-increase\"], [data-testid=\"qty-decrease\"]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "ViaCEP autofill",
+        "issue": "For CEPs that ViaCEP returns with erro:true (e.g. 58038101 used in the test spec is invalid), cep-error 'CEP não encontrado' shows but continue button stays disabled without a clear hint. Consider a fallback where user can manually fill address if ViaCEP is down/CEP not found. Note: the review spec's suggested CEP 58038101 is NOT valid — use 58038100 or 58013000.",
+        "affected_selectors": ["[data-testid=\"input-cep\"]", "[data-testid=\"cep-error\"]", "[data-testid=\"continue-to-summary\"]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX HIGH: Add bottom padding to OrderFlow step-1 card (e.g., pb-32) OR move qty controls above the fixed bar / add mb-24 to the card content so qty +/- buttons aren't hidden behind the sticky Continuar bar on mobile.",
+    "UX: In OrderFlow, when city is missing/street is empty after ViaCEP autofill, show a hint '(preencha o endereço manualmente)' and enable manual address entry.",
+    "DOC: Update review spec — CEP 58038101 is invalid on ViaCEP; use 58038100/58013000 for João Pessoa test data."
+  ],
+  "critical_code_review_comments": [
+    "server.py store_is_open uses now.weekday()==6 for Sunday and weekday_open/close otherwise — Saturday uses weekday hours which matches spec (Seg–Sáb) ✓",
+    "server.py create_order loyalty check `count % 11 == 10` correctly triggers on 11th order (0-indexed 10th) ✓",
+    "server.py cookie set with secure=True/samesite=none — appropriate for cross-site preview URL ✓",
+    "OrderFlow.jsx line 96 uses window.open which requires user gesture — works since call is inside submit click handler ✓",
+    "OrderFlow.jsx handleCep: if ViaCEP returns empty logradouro (some CEPs), street stays empty silently — no user hint that manual entry is needed. Minor UX gap.",
+    "OrderFlow.jsx step 1 fixed bottom bar overlaps card content on small viewports — see UI bug above."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "90%"},
+  "test_credentials": "Google OAuth via Emergent. For test users, insert user_sessions in MongoDB (see /app/auth_testing.md). Admin whitelist: santafedistribuidoradeglp@gmail.com (ADMIN_EMAILS env).",
+  "seed_data_creation": "Created & deleted transient test users (ui-cust-*, ui-adm-*, test-user-*, test-admin-*) plus their sessions and TEST_ prefixed orders. Environment restored to seeded state (2 products, default settings).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/backend_test.py cover: products, settings, guest orders + João Pessoa city gate, auth me/orders-my/loyalty-me, loyalty 11th-order discount, admin CRUD/settings/clients. Use pymongo directly to fabricate user_sessions for auth tests. Preview URL: https://santafe-deposito.preview.emergentagent.com. For UI E2E, valid JP CEPs: 58038100, 58013000. Recife CEP for outside-city gate: 50030230.",
+  "rca of the issue": "UI qty overlap: /app/frontend/src/pages/OrderFlow.jsx step 1 renders quantity controls inside a card that shares vertical space with a fixed bottom bar (`fixed bottom-0 ... p-4`) containing the 'Continuar' button. On 390x844 the card's inner qty buttons render at y≈477-533 while the fixed bar starts at y≈486, so the bar overlays the +/− controls and captures pointer events (Playwright confirms 'continue-to-form subtree intercepts pointer events'). Fix: add `pb-24` (or `mb-24`) to the step-1 card wrapper OR reduce card content height / render qty controls above the fold."
+}

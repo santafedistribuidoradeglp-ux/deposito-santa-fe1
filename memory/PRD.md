@@ -41,6 +41,13 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Foto do depósito na seção Sobre (com logo sobreposta)
 - Testes: iteração 2 — 14/15 backend pass; 3 bugs corrigidos e verificados: brute force (identifier por telefone, 429 OK), Google 403 p/ não-admin, UI de cupom/crédito que havia sido perdida em corrupção de arquivo (re-adicionada, testada E2E: R$120−R$10=R$110)
 
+## Atualizações (jun/2026 — notificações, senha, extrato, selo)
+- Notificação de indicação: toast + registro quando alguém compra pelo link (GET /api/referral/notifications, marca visto)
+- Extrato de créditos: collection credit_ledger (ganho/uso), GET /api/referral/ledger, UI expansível no ReferralCard
+- Recuperar senha via WhatsApp: /api/auth/forgot gera código 6 dígitos (30min) + link wa.me; admin vê códigos pendentes na aba Clientes com botão "Enviar no WhatsApp"; /api/auth/reset valida e troca senha. Testado E2E
+- Selo "Parceiro Santa Fé": página /selo imprimível (window.print) com QR do link de indicação; comércio aprovado ganha referral_unlocked automático
+- Suporte respondido: código via Save to GitHub; site testável pelo preview URL ou deploy (não roda de pasta local)
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

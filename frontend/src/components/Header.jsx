@@ -1,6 +1,9 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import axios from "axios";
+import { toast } from "sonner";
 import { LogOut, User, ClipboardList, Shield, MessageCircle } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, API } from "../context/AuthContext";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
@@ -18,6 +21,15 @@ export const Header = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+    axios.get(`${API}/referral/notifications`, { withCredentials: true }).then((r) => {
+      r.data.forEach((ev) => {
+        toast.success(`🎉 Você ganhou ${ev.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}! ${ev.from_name} comprou pelo seu link.`, { duration: 9000 });
+      });
+    }).catch(() => {});
+  }, [user]);
 
   const goTo = (item) => {
     if (item.route) {

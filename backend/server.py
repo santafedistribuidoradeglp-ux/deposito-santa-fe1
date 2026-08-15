@@ -117,6 +117,16 @@ class BusinessStatusInput(BaseModel):
     status: str
 
 
+class ForgotInput(BaseModel):
+    phone: str
+
+
+class ResetInput(BaseModel):
+    phone: str
+    code: str
+    new_password: str
+
+
 class User(BaseModel):
     user_id: str
     email: str
@@ -523,8 +533,19 @@ async def create_order(body: OrderInput, request: Request):
     if ref_code and has_p13(body.items):
         ref_user = await db.users.find_one({"referral_code": ref_code}, {"_id": 0, "password_hash": 0})
         if ref_user and ref_user.get("referral_unlocked") and (not user or user["user_id"] != ref_user["user_id"]):
-            await db.users.update_one({"user_id": ref_user["user_id"]}, {"$inc": {"referral_credit": float(settings.get("referral_credit_value", 5.0))}})
+            credit_val = float(settings.get("referral_credit_value", 5.0))
+            await db.users.update_one({"user_id": ref_user["user_id"]}, {"$inc": {"referral_credit": credit_val}})
             referred_by_code = ref_code
+            first_name = body.customer_name.strip().split(" ")[0] if body.customer_name.strip() else "Alguém"
+            now_iso = datetime.now(timezone.utc).isoformat()
+            await db.referral_events.insert_one({
+                "id": str(uuid.uuid4()), "user_id": ref_user["user_id"], "amount": credit_val,
+                "from_name": first_name, "seen": False, "created_at": now_iso,
+            })
+            await db.credit_ledger.insert_one({
+                "id": str(uuid.uuid4()), "user_id": ref_user["user_id"], "type": "ganho", "amount": credit_val,
+                "description": f"Indicação: {first_name} comprou pelo seu link", "created_at": now_iso,
+            })
 
     order = {
         "id": str(uuid.uuid4()),
@@ -553,6 +574,10 @@ async def create_order(body: OrderInput, request: Request):
         updates = {"$inc": {"order_count": 1}, "$set": {"phone": body.phone, "saved_address": body.address.model_dump()}}
         if credit_used > 0:
             updates["$inc"]["referral_credit"] = -credit_used
+            await db.credit_ledger.insert_one({
+                "id": str(uuid.uuid4()), "user_id": user["user_id"], "type": "uso", "amount": credit_used,
+                "description": "Crédito usado em pedido", "created_at": datetime.now(timezone.utc).isoformat(),
+            })
         if has_p13(body.items):
             updates["$set"]["referral_unlocked"] = True
         await db.users.update_one({"user_id": user["user_id"]}, updates)
@@ -630,6 +655,58 @@ async def referral_qr(link: str, user: dict = Depends(require_user)):
     return Response(content=buf.getvalue(), media_type="image/png")
 
 
+@api_router.get("/referral/notifications")
+async def referral_notifications(user: dict = Depends(require_user)):
+    events = await db.referral_events.find({"user_id": user["user_id"], "seen": False}, {"_id": 0}).to_list(50)
+    if events:
+        await db.referral_events.update_many({"user_id": user["user_id"], "seen": False}, {"$set": {"seen": True}})
+    return events
+
+
+@api_router.get("/referral/ledger")
+async def referral_ledger(user: dict = Depends(require_user)):
+    return await db.credit_ledger.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+# ---------- Password reset (via WhatsApp da loja) ----------
+@api_router.post("/auth/forgot")
+async def forgot_password(body: ForgotInput):
+    phone = re.sub(r"\D", "", body.phone)
+    user = await db.users.find_one({"phone": phone, "auth_type": "phone"})
+    if not user:
+        raise HTTPException(status_code=404, detail="Telefone não encontrado. Verifique o número ou crie uma conta.")
+    code = f"{secrets.randbelow(1000000):06d}"
+    await db.password_resets.delete_many({"phone": phone})
+    await db.password_resets.insert_one({
+        "phone": phone, "code": code, "name": user["name"], "used": False,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    settings = await db.settings.find_one({"key": "store"}, {"_id": 0})
+    msg = f"Olá! Esqueci minha senha do site Santa Fé. Meu telefone: {phone}. Pode me enviar o código de recuperação?"
+    return {"whatsapp_url": f"https://wa.me/{settings['whatsapp_number']}?text={urllib.parse.quote(msg)}"}
+
+
+@api_router.post("/auth/reset")
+async def reset_password(body: ResetInput):
+    phone = re.sub(r"\D", "", body.phone)
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no mínimo 6 caracteres")
+    reset = await db.password_resets.find_one({"phone": phone, "code": body.code.strip(), "used": False})
+    if not reset or datetime.fromisoformat(reset["expires_at"]) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado. Solicite um novo.")
+    await db.users.update_one({"phone": phone, "auth_type": "phone"}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    await db.password_resets.update_one({"phone": phone, "code": body.code.strip()}, {"$set": {"used": True}})
+    await db.login_attempts.delete_many({"identifier": phone})
+    return {"ok": True}
+
+
+@api_router.get("/admin/password-resets")
+async def admin_password_resets(admin: dict = Depends(require_admin)):
+    now = datetime.now(timezone.utc).isoformat()
+    return await db.password_resets.find({"used": False, "expires_at": {"$gte": now}}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+
 # ---------- Coupons ----------
 @api_router.post("/coupons/validate")
 async def validate_coupon(body: CouponValidateInput, request: Request):
@@ -697,7 +774,10 @@ async def admin_businesses(admin: dict = Depends(require_admin)):
 async def set_business_status(user_id: str, body: BusinessStatusInput, admin: dict = Depends(require_admin)):
     if body.status not in ("pendente", "aprovado", "recusado"):
         raise HTTPException(status_code=400, detail="Status inválido")
-    result = await db.users.update_one({"user_id": user_id, "account_type": "comercio"}, {"$set": {"business_status": body.status}})
+    update = {"business_status": body.status}
+    if body.status == "aprovado":
+        update["referral_unlocked"] = True
+    result = await db.users.update_one({"user_id": user_id, "account_type": "comercio"}, {"$set": update})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Comércio não encontrado")
     return {"ok": True}

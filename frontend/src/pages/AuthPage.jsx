@@ -24,8 +24,44 @@ export default function AuthPage() {
   const [facadeFile, setFacadeFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [forgotStep, setForgotStep] = useState(1);
+  const [waUrl, setWaUrl] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [resetPass, setResetPass] = useState("");
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const requestReset = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const r = await axios.post(`${API}/auth/forgot`, { phone: form.phone });
+      setWaUrl(r.data.whatsapp_url);
+      setForgotStep(2);
+    } catch (e) {
+      setError(formatApiErrorDetail(e.response?.data?.detail) || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doReset = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      await axios.post(`${API}/auth/reset`, { phone: form.phone, code: resetCode, new_password: resetPass });
+      toast.success("Senha redefinida! Agora faça login.");
+      setMode("login");
+      setForgotStep(1);
+      setResetCode("");
+      setResetPass("");
+      setForm((f) => ({ ...f, password: "" }));
+    } catch (e) {
+      setError(formatApiErrorDetail(e.response?.data?.detail) || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     setError("");
@@ -56,10 +92,10 @@ export default function AuthPage() {
   return (
     <div className="max-w-md mx-auto px-5 pb-16">
       <h1 className="text-2xl font-extrabold tracking-tight mt-8" style={{ fontFamily: "Manrope" }} data-testid="auth-title">
-        {mode === "login" ? "Entrar" : "Criar conta"}
+        {mode === "login" ? "Entrar" : mode === "forgot" ? "Recuperar senha" : "Criar conta"}
       </h1>
       <p className="text-muted-foreground text-sm mt-1">
-        {mode === "login" ? "Use seu telefone e senha." : "Ganhe créditos de indicação e acompanhe seus pedidos."}
+        {mode === "login" ? "Use seu telefone e senha." : mode === "forgot" ? "Você receberá um código pelo WhatsApp da loja." : "Ganhe créditos de indicação e acompanhe seus pedidos."}
       </p>
 
       <div className="grid grid-cols-2 gap-2 mt-6 bg-muted rounded-full p-1">
@@ -73,6 +109,52 @@ export default function AuthPage() {
         </button>
       </div>
 
+      {mode === "forgot" && (
+        <div className="mt-6 space-y-4">
+          {forgotStep === 1 ? (
+            <>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Telefone cadastrado (com DDD) *</label>
+                <input value={form.phone} onChange={set("phone")} type="tel" data-testid="forgot-phone-input" className={inputCls} placeholder="(83) 99999-9999" />
+              </div>
+              {error && <p className="text-sm text-red-600 font-semibold" data-testid="auth-error">{error}</p>}
+              <button onClick={requestReset} disabled={busy} data-testid="forgot-request-button"
+                className="w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 transition-colors disabled:opacity-50">
+                {busy ? "Aguarde..." : "Solicitar código"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground" data-testid="forgot-instructions">
+                Código gerado! Chame a loja no WhatsApp para receber seu <strong>código de 6 dígitos</strong> e digite abaixo com a nova senha.
+              </div>
+              <a href={waUrl} target="_blank" rel="noopener noreferrer" data-testid="forgot-whatsapp-button"
+                className="w-full h-14 rounded-full bg-[#25D366] text-white text-lg font-bold flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-colors">
+                Pedir código no WhatsApp
+              </a>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Código de 6 dígitos *</label>
+                <input value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))} type="tel" inputMode="numeric" data-testid="forgot-code-input" className={inputCls} placeholder="000000" />
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Nova senha *</label>
+                <input value={resetPass} onChange={(e) => setResetPass(e.target.value)} type="password" data-testid="forgot-newpass-input" className={inputCls} placeholder="Mínimo 6 caracteres" />
+              </div>
+              {error && <p className="text-sm text-red-600 font-semibold" data-testid="auth-error">{error}</p>}
+              <button onClick={doReset} disabled={busy} data-testid="forgot-reset-button"
+                className="w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 transition-colors disabled:opacity-50">
+                {busy ? "Aguarde..." : "Redefinir senha"}
+              </button>
+            </>
+          )}
+          <button onClick={() => { setMode("login"); setForgotStep(1); setError(""); }} data-testid="forgot-back-login"
+            className="w-full h-11 rounded-full text-muted-foreground text-sm font-semibold hover:text-foreground transition-colors">
+            Voltar ao login
+          </button>
+        </div>
+      )}
+
+      {mode !== "forgot" && (
       <div className="mt-6 space-y-4">
         {mode === "register" && (
           <>
@@ -126,7 +208,14 @@ export default function AuthPage() {
           className="w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform disabled:opacity-50">
           {busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
         </button>
+        {mode === "login" && (
+          <button onClick={() => { setMode("forgot"); setError(""); }} data-testid="forgot-password-link"
+            className="w-full text-center text-sm font-semibold text-primary hover:underline">
+            Esqueci minha senha
+          </button>
+        )}
       </div>
+      )}
 
       <button onClick={login} data-testid="admin-google-login"
         className="mt-8 mx-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">

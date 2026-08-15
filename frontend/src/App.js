@@ -10,6 +10,7 @@ import OrderFlow from "./pages/OrderFlow";
 import MyOrders from "./pages/MyOrders";
 import Admin from "./pages/Admin";
 import AuthPage from "./pages/AuthPage";
+import Selo from "./pages/Selo";
 import Businesses from "./pages/Businesses";
 
 function AppRouter() {
@@ -34,6 +35,7 @@ function AppRouter() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/entrar" element={<AuthPage />} />
         <Route path="/comercios" element={<Businesses />} />
+        <Route path="/selo" element={<Selo />} />
       </Routes>
     </>
   );

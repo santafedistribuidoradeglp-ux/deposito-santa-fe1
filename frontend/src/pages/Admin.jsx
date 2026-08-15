@@ -32,6 +32,7 @@ export default function Admin() {
   const [couponDialogOpen, setCouponDialogOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [cform, setCform] = useState(EMPTY_COUPON);
+  const [resets, setResets] = useState([]);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "admin")) navigate("/");
@@ -44,6 +45,7 @@ export default function Admin() {
     axios.get(`${API}/admin/clients`, opts).then((r) => setClients(r.data));
     axios.get(`${API}/admin/coupons`, opts).then((r) => setCoupons(r.data));
     axios.get(`${API}/admin/businesses`, opts).then((r) => setBusinesses(r.data));
+    axios.get(`${API}/admin/password-resets`, opts).then((r) => setResets(r.data));
     axios.get(`${API}/settings`).then((r) => setSettings(r.data));
   }, []);
 
@@ -281,6 +283,27 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="clients" className="mt-5 space-y-3">
+          {resets.length > 0 && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-2.5" data-testid="password-resets-box">
+              <p className="font-bold text-sm text-amber-800">🔑 Pedidos de recuperação de senha</p>
+              {resets.map((r, i) => (
+                <div key={r.code} className="flex items-center justify-between gap-2 bg-white rounded-xl p-3" data-testid={`reset-request-${i}`}>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm truncate">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">{r.phone}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-extrabold tracking-widest text-lg" style={{ fontFamily: "Manrope" }} data-testid={`reset-code-${i}`}>{r.code}</p>
+                    <a href={`https://wa.me/55${r.phone}?text=${encodeURIComponent(`Olá ${r.name.split(" ")[0]}! Seu código de recuperação de senha do site Santa Fé é: ${r.code} (válido por 30 minutos)`)}`}
+                      target="_blank" rel="noopener noreferrer" data-testid={`reset-send-${i}`}
+                      className="text-xs font-bold text-green-700 hover:underline">
+                      Enviar no WhatsApp
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {clients.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-clients">Nenhum cliente cadastrado.</p>}
           {clients.map((c, i) => (
             <div key={c.user_id} className="bg-white rounded-2xl border border-border p-4 flex items-center gap-3" data-testid={`admin-client-${i}`}>

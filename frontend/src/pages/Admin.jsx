@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -42,6 +42,37 @@ export default function Admin() {
   useEffect(() => {
     if (user?.role === "admin") loadAll();
   }, [user, loadAll]);
+
+  const knownIds = useRef(null);
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    const beep = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880; gain.gain.value = 0.15;
+        osc.start(); osc.stop(ctx.currentTime + 0.25);
+      } catch {}
+    };
+    const poll = async () => {
+      try {
+        const r = await axios.get(`${API}/admin/orders`, { withCredentials: true });
+        if (knownIds.current) {
+          const news = r.data.filter((o) => !knownIds.current.has(o.id));
+          if (news.length > 0) {
+            toast.success(`🔔 ${news.length} novo${news.length > 1 ? "s" : ""} pedido${news.length > 1 ? "s" : ""} recebido${news.length > 1 ? "s" : ""}!`, { duration: 8000 });
+            beep();
+            setOrders(r.data);
+          }
+        }
+        knownIds.current = new Set(r.data.map((o) => o.id));
+      } catch {}
+    };
+    const interval = setInterval(poll, 20000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   if (loading || !user || user.role !== "admin") return null;
 

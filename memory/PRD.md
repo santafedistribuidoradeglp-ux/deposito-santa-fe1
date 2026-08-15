@@ -33,7 +33,13 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Testes: backend 16/16 pass (/app/backend/tests/backend_test.py); E2E frontend ok; bug de overlay do botão qty corrigido (transform do fade-up quebrava fixed)
 
 ## Pendente do usuário
-- Logo (logo-santafe.jpeg) e foto do depósito (deposito.jpeg) — usuário disse que vai enviar; ao receber, substituir ícone de chama no header/footer e o card escuro da seção Sobre/hero
+- Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
+- Desconto automático no valor do 11º pedido — usuário pediu para deixar por último
+
+## Atualizações (jun/2026 — logo)
+- Logo real aplicada: header e footer usam /images/logo-mark.png (só o desenho, recortado da logo via PIL); seção Sobre mostra logo completa (/images/logo-full.jpeg)
+- PWA: ícones 192/512 gerados do desenho da logo, manifest.json atualizado, favicon.png, apple-touch-icon, título e theme-color (#0c2d48) no index.html
+- Painel admin: polling a cada 20s com toast "novo pedido recebido" + beep sonoro (WebAudio)
 
 ## Backlog priorizado
 - P0: nenhum pendente

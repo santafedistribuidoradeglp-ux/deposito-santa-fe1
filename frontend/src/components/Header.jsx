@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Flame, LogOut, User, ClipboardList, Shield, MessageCircle } from "lucide-react";
+import { LogOut, User, ClipboardList, Shield, MessageCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -30,9 +30,7 @@ export const Header = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-border shadow-sm">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-5 h-16 gap-3">
         <Link to="/" className="flex items-center gap-2 shrink-0" data-testid="header-logo-link">
-          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
-            <Flame className="w-5 h-5 text-white" strokeWidth={2.5} />
-          </div>
+          <img src="/images/logo-mark.png" alt="Santa Fé Distribuidora" className="w-10 h-10 rounded-full object-cover border border-border" />
           <div className="leading-tight">
             <span className="font-bold text-lg tracking-tight text-primary block" style={{ fontFamily: "Manrope" }}>Santa Fé</span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Distribuidora</span>

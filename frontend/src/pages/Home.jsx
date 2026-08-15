@@ -178,15 +178,9 @@ export default function Home() {
       {/* SOBRE */}
       <section id="sobre" className="bg-white border-y border-border">
         <div className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10 items-center">
-          <div className="rounded-3xl bg-[#0c2d48] text-white p-8 relative overflow-hidden min-h-[260px] flex flex-col justify-end">
-            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-secondary/20 blur-2xl" />
-            <div className="flex items-center gap-3 relative">
-              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                <Flame className="w-6 h-6 text-white" />
-              </div>
-              <p className="font-extrabold text-2xl tracking-tight" style={{ fontFamily: "Manrope" }}>Santa Fé<br /><span className="text-sm font-semibold text-white/70 uppercase tracking-widest">Distribuidora</span></p>
-            </div>
-            <p className="mt-5 text-sm text-white/75 flex items-center gap-1.5 relative"><MapPin className="w-4 h-4 text-secondary" /> Cidade Verde · João Pessoa</p>
+          <div className="rounded-3xl bg-white border border-border shadow-sm p-8 relative overflow-hidden min-h-[260px] flex flex-col items-center justify-center gap-4">
+            <img src="/images/logo-full.jpeg" alt="Logo Santa Fé Distribuidora" className="max-h-[240px] w-auto object-contain" data-testid="about-logo" />
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5"><MapPin className="w-4 h-4 text-secondary" /> Cidade Verde · João Pessoa</p>
           </div>
           <div>
             <span className="text-xs font-bold uppercase tracking-widest text-secondary">Conheça a Santa Fé</span>
@@ -258,7 +252,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-5 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center"><Flame className="w-5 h-5 text-white" /></div>
+              <img src="/images/logo-mark.png" alt="Santa Fé Distribuidora" className="w-10 h-10 rounded-full object-cover" />
               <span className="font-bold text-lg" style={{ fontFamily: "Manrope" }}>Santa Fé Distribuidora</span>
             </div>
             <p className="text-sm text-white/70 mt-3">Gás e água mineral com qualidade, preço justo e atendimento de confiança em João Pessoa.</p>

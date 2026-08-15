@@ -626,6 +626,55 @@ async def update_order_status(order_id: str, body: StatusUpdate, admin: dict = D
     return {"ok": True}
 
 
+# ---------- Admin report & ranking ----------
+@api_router.get("/admin/report")
+async def admin_report(days: int = 7, admin: dict = Depends(require_admin)):
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    orders = await db.orders.find({"created_at": {"$gte": since}}, {"_id": 0}).to_list(5000)
+    prod_count = {}
+    for o in orders:
+        for it in o["items"]:
+            prod_count[it["name"]] = prod_count.get(it["name"], 0) + it["qty"]
+    top_products = sorted([{"name": k, "qty": v} for k, v in prod_count.items()], key=lambda x: -x["qty"])
+    new_clients = await db.users.count_documents({"role": "customer", "created_at": {"$gte": since}})
+    credits = await db.credit_ledger.find({"type": "ganho", "created_at": {"$gte": since}}, {"_id": 0}).to_list(5000)
+    return {
+        "days": days,
+        "total_orders": len(orders),
+        "total_revenue": round(sum(o.get("total", 0) for o in orders), 2),
+        "negotiable_orders": sum(1 for o in orders if o.get("price_negotiable")),
+        "top_products": top_products,
+        "new_clients": new_clients,
+        "credits_given": round(sum(c["amount"] for c in credits), 2),
+    }
+
+
+@api_router.get("/admin/referral-ranking")
+async def referral_ranking(admin: dict = Depends(require_admin)):
+    pipeline = [
+        {"$group": {"_id": "$user_id", "indications": {"$sum": 1}, "earned": {"$sum": "$amount"}}},
+        {"$sort": {"indications": -1}},
+        {"$limit": 20},
+    ]
+    rows = await db.referral_events.aggregate(pipeline).to_list(20)
+    user_ids = [r["_id"] for r in rows]
+    users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "phone": 1, "business_name": 1, "account_type": 1, "referral_credit": 1}).to_list(20)
+    users_map = {u["user_id"]: u for u in users}
+    result = []
+    for r in rows:
+        u = users_map.get(r["_id"])
+        if u:
+            result.append({
+                "name": u.get("business_name") or u.get("name"),
+                "phone": u.get("phone"),
+                "account_type": u.get("account_type", "cliente"),
+                "indications": r["indications"],
+                "earned": round(r["earned"], 2),
+                "current_credit": round(float(u.get("referral_credit", 0) or 0), 2),
+            })
+    return result
+
+
 @api_router.get("/admin/clients")
 async def admin_clients(admin: dict = Depends(require_admin)):
     return await db.users.find({"role": "customer"}, {"_id": 0, "password_hash": 0}).sort("order_count", -1).to_list(1000)

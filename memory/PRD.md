@@ -48,6 +48,12 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Selo "Parceiro Santa Fé": página /selo imprimível (window.print) com QR do link de indicação; comércio aprovado ganha referral_unlocked automático
 - Suporte respondido: código via Save to GitHub; site testável pelo preview URL ou deploy (não roda de pasta local)
 
+## Atualizações (jun/2026 — carrinho, relatório, ranking, deploy-ready)
+- Carrinho multi-produto: passo 1 do pedido virou "Monte seu pedido" com steppers para todos os produtos ativos (gás + águas juntos); resumo lista todos os itens; "Pedir novamente" restaura todas as quantidades. Testado E2E (1x P13 + 2x Água = R$154 ✓)
+- Relatório de vendas: aba "Resumo" no admin (padrão ao abrir) — últimos 7 dias: pedidos, faturamento (+ contagem "a combinar"), novos clientes, créditos dados, produtos mais vendidos (GET /api/admin/report?days=7)
+- Ranking de indicadores: top 20 por indicações com total ganho (GET /api/admin/referral-ranking, query batched com $in)
+- Deploy: deployment_agent = PASS (sem bloqueadores); .gitignore exclui test_credentials; usuário instruído a clicar em Deploy na plataforma
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

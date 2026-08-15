@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus, Save, Check, X, Store } from "lucide-react";
+import { Pencil, Trash2, Plus, Save, Check, X, Store, BarChart3, Trophy } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
@@ -33,6 +33,8 @@ export default function Admin() {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [cform, setCform] = useState(EMPTY_COUPON);
   const [resets, setResets] = useState([]);
+  const [report, setReport] = useState(null);
+  const [ranking, setRanking] = useState([]);
 
   useEffect(() => {
     if (!loading && (!user || user.role !== "admin")) navigate("/");
@@ -46,6 +48,8 @@ export default function Admin() {
     axios.get(`${API}/admin/coupons`, opts).then((r) => setCoupons(r.data));
     axios.get(`${API}/admin/businesses`, opts).then((r) => setBusinesses(r.data));
     axios.get(`${API}/admin/password-resets`, opts).then((r) => setResets(r.data));
+    axios.get(`${API}/admin/report?days=7`, opts).then((r) => setReport(r.data));
+    axios.get(`${API}/admin/referral-ranking`, opts).then((r) => setRanking(r.data));
     axios.get(`${API}/settings`).then((r) => setSettings(r.data));
   }, []);
 
@@ -168,8 +172,9 @@ export default function Admin() {
     <div className="max-w-md mx-auto px-5 pb-16">
       <h1 className="text-2xl font-extrabold tracking-tight mt-6" style={{ fontFamily: "Manrope" }} data-testid="admin-title">Painel Admin</h1>
 
-      <Tabs defaultValue="orders" className="mt-5">
+      <Tabs defaultValue="report" className="mt-5">
         <TabsList className="w-full rounded-full h-11 flex overflow-x-auto justify-start">
+          <TabsTrigger value="report" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-report">Resumo</TabsTrigger>
           <TabsTrigger value="orders" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-orders">Pedidos</TabsTrigger>
           <TabsTrigger value="products" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-products">Produtos</TabsTrigger>
           <TabsTrigger value="coupons" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-coupons">Cupons</TabsTrigger>
@@ -177,6 +182,69 @@ export default function Admin() {
           <TabsTrigger value="clients" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-clients">Clientes</TabsTrigger>
           <TabsTrigger value="settings" className="rounded-full text-xs flex-1 min-w-fit px-3" data-testid="tab-settings">Config</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="report" className="mt-5 space-y-4">
+          {report && (
+            <>
+              <p className="text-sm font-bold text-muted-foreground flex items-center gap-1.5"><BarChart3 className="w-4 h-4" /> Últimos {report.days} dias</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-2xl border border-border p-4" data-testid="report-total-orders">
+                  <p className="text-3xl font-extrabold text-primary" style={{ fontFamily: "Manrope" }}>{report.total_orders}</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase mt-1">Pedidos</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-4" data-testid="report-revenue">
+                  <p className="text-2xl font-extrabold text-green-700" style={{ fontFamily: "Manrope" }}>{brl(report.total_revenue)}</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase mt-1">Faturamento{report.negotiable_orders > 0 ? ` (+${report.negotiable_orders} a combinar)` : ""}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-4" data-testid="report-new-clients">
+                  <p className="text-3xl font-extrabold text-secondary" style={{ fontFamily: "Manrope" }}>{report.new_clients}</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase mt-1">Novos clientes</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-border p-4" data-testid="report-credits">
+                  <p className="text-2xl font-extrabold text-foreground" style={{ fontFamily: "Manrope" }}>{brl(report.credits_given)}</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase mt-1">Créditos dados</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-border p-4" data-testid="report-top-products">
+                <p className="font-bold text-sm mb-3">Produtos mais vendidos</p>
+                {report.top_products.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma venda no período.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {report.top_products.map((p, i) => (
+                      <div key={p.name} className="flex items-center justify-between text-sm" data-testid={`top-product-${i}`}>
+                        <span className="font-semibold truncate">{i + 1}. {p.name}</span>
+                        <span className="font-extrabold text-primary shrink-0 ml-2">{p.qty} un</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          <div className="bg-white rounded-2xl border border-border p-4" data-testid="referral-ranking-box">
+            <p className="font-bold text-sm mb-3 flex items-center gap-1.5"><Trophy className="w-4 h-4 text-secondary" /> Ranking de indicadores</p>
+            {ranking.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="ranking-empty">Nenhuma indicação registrada ainda.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {ranking.map((r, i) => (
+                  <div key={r.phone || i} className="flex items-center gap-3" data-testid={`ranking-item-${i}`}>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-extrabold shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{r.name} {r.account_type === "comercio" && <span className="text-[10px] font-bold text-primary uppercase">comércio</span>}</p>
+                      <p className="text-xs text-muted-foreground">{r.phone}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-extrabold text-primary" style={{ fontFamily: "Manrope" }}>{r.indications}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">indicações · {brl(r.earned)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="orders" className="mt-5 space-y-3">
           {orders.length === 0 && <p className="text-muted-foreground text-sm text-center py-8" data-testid="no-admin-orders">Nenhum pedido ainda.</p>}

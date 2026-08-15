@@ -15,9 +15,10 @@ export default function OrderFlow() {
   const location = useLocation();
   const { user } = useAuth();
   const [product, setProduct] = useState(null);
+  const [allProducts, setAllProducts] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [settings, setSettings] = useState(null);
   const [step, setStep] = useState(1);
-  const [qty, setQty] = useState(1);
   const [form, setForm] = useState({
     customer_name: "", phone: "", cep: "", street: "", number: "",
     complement: "", neighborhood: "", city: "", payment_method: "PIX", note: "",
@@ -38,6 +39,8 @@ export default function OrderFlow() {
       const p = r.data.find((x) => x.id === productId);
       if (!p) { navigate("/"); return; }
       setProduct(p);
+      setAllProducts(r.data);
+      setQuantities((q) => (Object.keys(q).length ? q : { [p.id]: 1 }));
     });
     axios.get(`${API}/settings`).then((r) => setSettings(r.data));
   }, [productId, navigate]);
@@ -61,7 +64,9 @@ export default function OrderFlow() {
   useEffect(() => {
     if (repeat) {
       const a = repeat.address;
-      setQty(repeat.items[0].qty);
+      const q = {};
+      repeat.items.forEach((it) => { q[it.product_id] = it.qty; });
+      setQuantities(q);
       setForm((f) => ({
         ...f, customer_name: repeat.customer_name, phone: repeat.phone,
         cep: a.cep, street: a.street, number: a.number, complement: a.complement || "",
@@ -71,6 +76,8 @@ export default function OrderFlow() {
       toast.success("Pedido anterior carregado! Revise e envie.");
     }
   }, [repeat]);
+
+  const setQtyFor = (id, delta) => setQuantities((q) => ({ ...q, [id]: Math.min(20, Math.max(0, (q[id] || 0) + delta)) }));
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -119,7 +126,7 @@ export default function OrderFlow() {
       const r = await axios.post(`${API}/orders`, {
         customer_name: form.customer_name,
         phone: form.phone,
-        items: [{ product_id: product.id, name: product.name, price: form.payment_method === "Cartão na entrega" && product.card_price ? product.card_price : product.price, qty }],
+        items: cartItems.map((it) => ({ product_id: it.id, name: it.name, price: it.unit, qty: it.qty })),
         payment_method: form.payment_method,
         address: {
           cep: form.cep, street: form.street, number: form.number,
@@ -143,8 +150,12 @@ export default function OrderFlow() {
 
   if (!product) return <div className="min-h-[50vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  const unitPrice = form.payment_method === "Cartão na entrega" && product.card_price ? product.card_price : product.price;
-  const subtotal = unitPrice * qty;
+  const priceFor = (p) => (form.payment_method === "Cartão na entrega" && p.card_price ? p.card_price : p.price);
+  const cartItems = allProducts
+    .filter((p) => (quantities[p.id] || 0) > 0)
+    .map((p) => ({ id: p.id, name: p.name, qty: quantities[p.id], unit: priceFor(p) }));
+  const totalQty = cartItems.reduce((s, it) => s + it.qty, 0);
+  const subtotal = cartItems.reduce((s, it) => s + it.unit * it.qty, 0);
   const couponDiscount = appliedCoupon && !isBusiness
     ? (appliedCoupon.type === "percent" ? subtotal * appliedCoupon.value / 100 : Math.min(appliedCoupon.value, subtotal))
     : 0;
@@ -168,46 +179,59 @@ export default function OrderFlow() {
       {step === 1 && (
         <>
         <div className="mt-6 mb-32 fade-up">
-          <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
-            {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="w-full h-48 object-cover" />
-            ) : (
-              <ProductVisual visual={product.visual} name={product.name} />
-            )}
-            <div className="p-6">
-              <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Manrope" }}>{product.name}</h1>
-              {isBusiness ? (
-                <p className="text-lg font-bold text-primary mt-1" data-testid="business-price-note">Preço a combinar <span className="text-sm text-muted-foreground font-normal">(conta comércio)</span></p>
-              ) : (
-                <>
-                  <p className="text-xl font-bold text-primary mt-1">{brl(product.price)} <span className="text-sm text-muted-foreground font-normal">/ unidade à vista</span></p>
-                  {product.card_price && <p className="text-sm text-muted-foreground">{brl(product.card_price)} no cartão</p>}
-                </>
-              )}
-              <div className="mt-6">
-                <p className="font-semibold mb-3">Quantidade</p>
-                <div className="flex items-center gap-5">
-                  <button onClick={() => setQty(Math.max(1, qty - 1))} data-testid="qty-decrease"
-                    className="w-14 h-14 rounded-full border-2 border-border flex items-center justify-center hover:bg-muted active:scale-[0.95] transition-colors transition-transform disabled:opacity-40" disabled={qty <= 1}>
-                    <Minus className="w-6 h-6" />
-                  </button>
-                  <span className="text-3xl font-extrabold w-12 text-center" data-testid="qty-value" style={{ fontFamily: "Manrope" }}>{qty}</span>
-                  <button onClick={() => setQty(Math.min(20, qty + 1))} data-testid="qty-increase"
-                    className="w-14 h-14 rounded-full border-2 border-border flex items-center justify-center hover:bg-muted active:scale-[0.95] transition-colors transition-transform">
-                    <Plus className="w-6 h-6" />
-                  </button>
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Manrope" }}>Monte seu pedido</h1>
+          <p className="text-sm text-muted-foreground mt-1">Pode pedir gás e água juntos na mesma entrega.</p>
+          {isBusiness && (
+            <p className="text-sm font-bold text-primary mt-2" data-testid="business-price-note">Conta comércio: preço a combinar com o atendimento.</p>
+          )}
+          <div className="mt-4 space-y-4">
+            {allProducts.map((p, i) => {
+              const q = quantities[p.id] || 0;
+              return (
+                <div key={p.id} className={`bg-white rounded-3xl border shadow-sm overflow-hidden transition-colors ${q > 0 ? "border-primary" : "border-border"}`} data-testid={`cart-product-${i}`}>
+                  <div className="flex items-center gap-4 p-4">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="scale-[0.45] origin-top-left w-[222px] h-[222px]"><ProductVisual visual={p.visual} name={p.name} /></div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold leading-tight" style={{ fontFamily: "Manrope" }}>{p.name}</p>
+                      {isBusiness ? (
+                        <p className="text-sm font-bold text-primary mt-0.5">A combinar</p>
+                      ) : (
+                        <>
+                          <p className="text-lg font-extrabold text-primary mt-0.5" data-testid={`cart-price-${i}`}>{brl(p.price)}</p>
+                          {p.card_price && <p className="text-xs text-muted-foreground">{brl(p.card_price)} no cartão</p>}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button onClick={() => setQtyFor(p.id, -1)} data-testid={`qty-decrease-${i}`} disabled={q <= 0}
+                        className="w-11 h-11 rounded-full border-2 border-border flex items-center justify-center hover:bg-muted active:scale-[0.95] transition-colors transition-transform disabled:opacity-30">
+                        <Minus className="w-5 h-5" />
+                      </button>
+                      <span className="text-xl font-extrabold w-7 text-center" data-testid={`qty-value-${i}`} style={{ fontFamily: "Manrope" }}>{q}</span>
+                      <button onClick={() => setQtyFor(p.id, 1)} data-testid={`qty-increase-${i}`}
+                        className="w-11 h-11 rounded-full border-2 border-border flex items-center justify-center hover:bg-muted active:scale-[0.95] transition-colors transition-transform">
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 z-30">
             <div className="max-w-md mx-auto flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xs text-muted-foreground">{totalQty} {totalQty === 1 ? "item" : "itens"}</p>
                 <p className="text-xl font-extrabold text-foreground" data-testid="step1-total" style={{ fontFamily: "Manrope" }}>{isBusiness ? "A combinar" : brl(subtotal)}</p>
               </div>
-              <button onClick={() => setStep(2)} data-testid="continue-to-form"
+              <button onClick={() => setStep(2)} disabled={totalQty === 0} data-testid="continue-to-form"
                 className="h-14 px-8 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform">
                 Continuar
               </button>
@@ -328,9 +352,13 @@ export default function OrderFlow() {
         <div className="mt-6 fade-up">
           <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Manrope" }}>Resumo do pedido</h1>
           <div className="mt-4 bg-white rounded-3xl border border-border shadow-sm p-6 space-y-4" data-testid="order-summary">
-            <div className="flex justify-between items-center">
-              <p className="font-semibold">{qty}x {product.name}</p>
-              <p className="font-bold">{isBusiness ? "A combinar" : brl(subtotal)}</p>
+            <div className="space-y-2">
+              {cartItems.map((it, i) => (
+                <div key={it.id} className="flex justify-between items-center" data-testid={`summary-item-${i}`}>
+                  <p className="font-semibold">{it.qty}x {it.name}</p>
+                  <p className="font-bold">{isBusiness ? "A combinar" : brl(it.unit * it.qty)}</p>
+                </div>
+              ))}
             </div>
             <hr className="border-border" />
             <div className="text-sm space-y-1.5 text-muted-foreground">

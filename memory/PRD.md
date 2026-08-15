@@ -76,6 +76,13 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Faixa destaque laranja abaixo do hero: "ENTREGA GRÁTIS* · INSTALAÇÃO GRÁTIS · CUPONS GRÁTIS" com nota pequena "*exceto Gás do Povo, que tem entrega cobrada"; bullet do hero atualizado para "Entrega grátis e rápida"
 - Sem taxa de entrega (confirmado pelo usuário — não implementar cobrança por bairro)
 
+## Atualizações (jun/2026 — Gás do Povo + fidelidade 3/3)
+- Fidelidade: agora 3 pedidos → ao completar 3/3 gera automaticamente cupom pessoal FIELxxxx de R$10 (settings.loyalty_discount_value, editável no admin); 4º pedido (resgate) zera o ciclo (count % 4); UI mostra X/3 "cupom grátis" sem exibir valor na barra; card fidelidade da Home reposicionado (removido -mt-6/z-10 que sobrepunha)
+- Produto "Gás do Povo" (4º card, imagem enviada pelo usuário): mostra "Taxa de entrega R$20"; 1ª compra logada aplica cupom automático GASDOPOVO10 (R$10, editável na aba Cupons, scope gasdopovo) → entrega por R$10, marcado gdp_first_used; formulário exige CPF quando gdp no carrinho; mensagem WhatsApp destaca "*PEDIDO GÁS DO POVO — verificar benefício/CPF*" + CPF + item como taxa de entrega
+- Seção "Promoções" substituída por seção "Gás do Povo" abaixo do hero: 2 accordions (o que é / quem pode receber, com aviso de que a seleção é do Governo), link externo gasdopovo.mds.gov.br, botão central "Já tenho o benefício, quero solicitar" que rola e destaca o card do produto; nav/footer atualizados
+- "Tem um cupom?" movido para ACIMA dos produtos; produtos em grade 2x2 na ordem: P13, Gás do Povo, Água Itacoatiara, Água Sublime (campo sort_order)
+- Testes: iteração 3 (8/8 backend + frontend 100%) e iteração 4 (10/10, revalidação da mensagem WhatsApp sem emoji corrompido e sem texto legado "6º pedido")
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

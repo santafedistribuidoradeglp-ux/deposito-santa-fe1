@@ -1,0 +1,23 @@
+{
+  "summary": "Revalidation of 2 cosmetic fixes to build_whatsapp_message: (a) U+FFFD replacement char removed from GDP header line (now exact literal '*PEDIDO GÁS DO POVO — verificar benefício/CPF do cliente*'); (b) legacy '6º pedido' text removed. Backend-only. 10/10 pytest PASS: 2 new revalidation tests + 8 regression tests (iteration 3 suite). GDP logged-in order returns 200, auto-applies GASDOPOVO10 (-R$10) on first purchase, total R$10, decoded whatsapp_url contains the exact new GDP header, CPF 12345678901, coupon code, and total R$ 10,00 — no \\ufffd and no '6º pedido' anywhere. Guest P13 order returns 200, total R$120, message has no GDP header, no \\ufffd, no '6º pedido'. Test user (order_count, gdp_first_used) restored and test orders/coupons cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration4_whatsapp_cleanup.py",
+    "/app/backend/tests/test_iteration3_gdp_loyalty.py",
+    "/app/test_reports/pytest/iteration4.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py L463 build_whatsapp_message: assinatura ainda recebe `loyalty: bool` mas o parâmetro nunca é usado dentro da função (o bloco de fidelidade foi removido). Considerar remover o argumento e a chamada `build_whatsapp_message(order, False)` para reduzir código morto.",
+    "server.py L466: GDP header agora é linha limpa sem emoji — confirmado no wa.me url decodificada (nenhum U+FFFD). Fix aplicada corretamente."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration4_whatsapp_cleanup.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "83911112222 / senha12345 — funcional. (novasenha123 e teste123 são fallbacks para o caso da senha ter sido rotacionada.)",
+  "seed_data_creation": "Nenhum dado permanente. Fixtures resetam user teste (order_count=0, unset gdp_first_used) e removem pedidos/cupons/ledger criados. Também limpa qualquer pedido guest com customer_name='TEST_Guest_P13'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL: https://santafe-deposito.preview.emergentagent.com. Regressão completa: pytest /app/backend/tests/ -v (10 testes, ~2.5s). Fixes desta iteração validadas: (1) linha GDP no wa.me sem \\ufffd; (2) mensagem sem '6º pedido'. Nada mais mudou no fluxo.",
+  "rca of the issue": "N/A — revalidação apenas."
+}

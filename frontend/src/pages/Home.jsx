@@ -20,9 +20,17 @@ export default function Home() {
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState(null);
   const [couponError, setCouponError] = useState("");
+  const [gdpOpen, setGdpOpen] = useState(0);
+  const [highlightGdp, setHighlightGdp] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, login } = useAuth();
+
+  const goToGdp = () => {
+    setHighlightGdp(true);
+    document.querySelector('[data-product="gasdopovo"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => setHighlightGdp(false), 3500);
+  };
 
   const checkCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -136,70 +144,76 @@ export default function Home() {
         </div>
       </div>
 
+      {/* GÁS DO POVO */}
+      <section id="gasdopovo" className="max-w-6xl mx-auto px-5 pt-10">
+        <div className="rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 text-white p-6 md:p-8 shadow-lg" data-testid="gdp-section">
+          <div className="text-center">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/20 rounded-full px-4 py-1.5">
+              <Flame className="w-3.5 h-3.5" /> Gás do Povo
+            </span>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }}>Somos revenda credenciada do Gás do Povo</h2>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3 mt-6">
+            <div>
+              <button onClick={() => setGdpOpen(gdpOpen === 1 ? 0 : 1)} data-testid="gdp-faq-1"
+                className="w-full h-12 rounded-full bg-white/15 border border-white/25 text-sm font-bold hover:bg-white/25 transition-colors">
+                O que é o Gás do Povo?
+              </button>
+              {gdpOpen === 1 && <p className="text-sm bg-white/10 rounded-2xl p-4 mt-2" data-testid="gdp-faq-1-text">É um programa do Governo Federal que permite a famílias elegíveis receberem gratuitamente a recarga de um botijão de GLP de 13 kg em revendas credenciadas.</p>}
+            </div>
+            <div>
+              <button onClick={() => setGdpOpen(gdpOpen === 2 ? 0 : 2)} data-testid="gdp-faq-2"
+                className="w-full h-12 rounded-full bg-white/15 border border-white/25 text-sm font-bold hover:bg-white/25 transition-colors">
+                Quem pode receber?
+              </button>
+              {gdpOpen === 2 && (
+                <div className="text-sm bg-white/10 rounded-2xl p-4 mt-2 text-left space-y-1" data-testid="gdp-faq-2-text">
+                  <p>• Cadastro Único atualizado nos últimos 24 meses;</p>
+                  <p>• renda familiar de até meio salário-mínimo por pessoa;</p>
+                  <p>• CPF do responsável familiar regular;</p>
+                  <p>• cadastro sem determinadas pendências;</p>
+                  <p>• atualmente, o programa prioriza famílias do Bolsa Família com 2 ou mais integrantes.</p>
+                  <p className="font-bold mt-2">⚠️ A participação não é solicitada diretamente à Santa Fé. A seleção é feita pelo Governo com base nos dados do Cadastro Único.</p>
+                </div>
+              )}
+            </div>
+            <a href="https://gasdopovo.mds.gov.br" target="_blank" rel="noopener noreferrer" data-testid="gdp-consult-link"
+              className="w-full h-12 rounded-full bg-white text-orange-600 text-sm font-bold flex items-center justify-center hover:bg-orange-50 transition-colors">
+              Consulte seu benefício
+            </a>
+          </div>
+          <div className="text-center mt-5">
+            <button onClick={goToGdp} data-testid="gdp-order-button"
+              className="h-13 px-8 py-3 rounded-full bg-[#0c2d48] text-white font-bold hover:bg-[#0c2d48]/85 active:scale-[0.98] transition-colors transition-transform">
+              Já tenho o benefício, quero solicitar →
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* LOYALTY */}
       {loyalty && (
-        <div className="max-w-6xl mx-auto px-5 -mt-6 relative z-10">
+        <div className="max-w-6xl mx-auto px-5 mt-8">
           <div className="rounded-2xl bg-primary text-white p-5 shadow-lg fade-up" data-testid="loyalty-card">
             <div className="flex items-center justify-between">
               <p className="font-bold flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
                 <Gift className="w-5 h-5" />
-                {loyalty.next_is_discount ? "Seu próximo pedido tem desconto de fidelidade!" : "Cartão fidelidade"}
+                {loyalty.next_is_discount ? "Você ganhou um cupom grátis! Veja em Meus Pedidos" : "Cartão fidelidade"}
               </p>
-              <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/5</span>
+              <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/3</span>
             </div>
             <div className="mt-3 h-2.5 bg-white/25 rounded-full overflow-hidden">
-              <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 5) * 20}%` }} />
+              <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 3) * 33.34}%` }} />
             </div>
             {!loyalty.next_is_discount && (
-              <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para R$ 10 de desconto no 6º</p>
+              <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para ganhar um cupom grátis</p>
             )}
           </div>
         </div>
       )}
 
-      {/* PRODUTOS */}
-      <section id="produtos" className="max-w-6xl mx-auto px-5 py-12">
-        <div className="max-w-xl mx-auto text-center">
-          <span className="text-xs font-bold uppercase tracking-widest text-secondary">Nossos produtos</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Escolha o que você precisa</h2>
-          <p className="text-muted-foreground mt-2">Produtos de qualidade e preços claros. Clique em pedir e fale direto com a Santa Fé.</p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-          {products.map((p, i) => (
-            <article key={p.id} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up flex flex-col" style={{ animationDelay: `${i * 90}ms` }} data-testid={`product-card-${i}`}>
-              {p.image_url ? (
-                <div className="w-full h-[190px] bg-white flex items-center justify-center p-3 border-b border-border">
-                  <img src={p.image_url} alt={p.name} className="max-h-full max-w-full object-contain" />
-                </div>
-              ) : (
-                <ProductVisual visual={p.visual} name={p.name} />
-              )}
-              <div className="p-6 flex flex-col flex-1">
-                {p.tag && (
-                  <span className={`self-start text-xs font-bold px-3 py-1 rounded-full ${p.tag === "Mais pedido" ? "bg-orange-100 text-orange-700" : "bg-accent text-accent-foreground"}`}>
-                    {p.tag}
-                  </span>
-                )}
-                <h3 className="font-bold text-xl tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>{p.name}</h3>
-                {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
-                <p className="text-xs text-muted-foreground mt-3 uppercase tracking-wide font-semibold">À vista</p>
-                <p className="text-3xl font-extrabold text-primary" data-testid={`product-price-${i}`} style={{ fontFamily: "Manrope" }}>{brl(p.price)}</p>
-                {p.card_price && <p className="text-sm text-muted-foreground mt-0.5">{brl(p.card_price)} no cartão</p>}
-                <button
-                  onClick={() => navigate(`/pedido/${p.id}`)}
-                  data-testid={`order-button-${i}`}
-                  className="mt-5 w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-5 h-5" /> Pedir agora
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
       {/* CUPOM */}
-      <section id="cupom" className="max-w-6xl mx-auto px-5 pb-12">
+      <section id="cupom" className="max-w-6xl mx-auto px-5 pt-10">
         <div className="max-w-xl mx-auto rounded-3xl bg-white border border-border shadow-sm p-6 md:p-8 text-center" data-testid="coupon-box">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-secondary">
             <Ticket className="w-4 h-4" /> Tem um cupom?
@@ -216,27 +230,65 @@ export default function Home() {
           </div>
           {couponResult && (
             <p className="text-sm font-bold text-green-700 mt-3" data-testid="home-coupon-valid">
-              ✅ Cupom {couponResult.code} válido: {couponResult.type === "percent" ? `${couponResult.value}%` : brl(couponResult.value)} de desconto{couponResult.product_scope === "p13" ? " (em pedidos com gás P13)" : couponResult.product_scope === "agua" ? " (em pedidos com água)" : ""} — já ficará aplicado no seu pedido!
+              ✅ Cupom {couponResult.code} válido: {couponResult.type === "percent" ? `${couponResult.value}%` : brl(couponResult.value)} de desconto — já ficará aplicado no seu pedido!
             </p>
           )}
           {couponError && <p className="text-sm font-semibold text-red-600 mt-3" data-testid="home-coupon-error">{couponError}</p>}
         </div>
       </section>
 
-      {/* PROMOÇÕES */}
-      <section id="promocoes" className="max-w-6xl mx-auto px-5 pb-16">
-        <div className="rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 text-white p-8 md:p-10 flex flex-col md:flex-row md:items-center gap-6 justify-between shadow-lg">
-          <div className="max-w-xl">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/20 rounded-full px-4 py-1.5">
-              <Flame className="w-3.5 h-3.5" /> Promoções
-            </span>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }} data-testid="promo-title">{settings?.promo_title || "Em breve, ofertas especiais da Santa Fé."}</h2>
-            <p className="text-white/90 mt-2" data-testid="promo-text">{settings?.promo_text || "Vamos usar este espaço para destacar as melhores ofertas e facilitar ainda mais seus pedidos."}</p>
-          </div>
-          <a href={waLink("Olá! Gostaria de saber quais são as promoções de hoje.")} target="_blank" rel="noopener noreferrer" data-testid="promo-whatsapp-link"
-            className="h-14 px-7 rounded-full bg-white text-orange-600 font-bold flex items-center justify-center gap-2 shrink-0 hover:bg-orange-50 active:scale-[0.98] transition-colors transition-transform">
-            Quero saber as ofertas →
-          </a>
+      {/* PRODUTOS */}
+      <section id="produtos" className="max-w-6xl mx-auto px-5 py-12">
+        <div className="max-w-xl mx-auto text-center">
+          <span className="text-xs font-bold uppercase tracking-widest text-secondary">Nossos produtos</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Escolha o que você precisa</h2>
+          <p className="text-muted-foreground mt-2">Produtos de qualidade e preços claros. Clique em pedir e fale direto com a Santa Fé.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
+          {products.map((p, i) => {
+            const isGdp = p.name.toLowerCase().includes("gás do povo") || p.name.toLowerCase().includes("gas do povo");
+            return (
+            <article key={p.id} data-product={isGdp ? "gasdopovo" : ""} className={`bg-white rounded-3xl border shadow-sm overflow-hidden fade-up flex flex-col transition-shadow ${isGdp && highlightGdp ? "ring-4 ring-secondary border-secondary" : "border-border"}`} style={{ animationDelay: `${i * 90}ms` }} data-testid={`product-card-${i}`}>
+              {p.image_url ? (
+                <div className="w-full h-[190px] bg-white flex items-center justify-center p-3 border-b border-border">
+                  <img src={p.image_url} alt={p.name} className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : (
+                <ProductVisual visual={p.visual} name={p.name} />
+              )}
+              <div className="p-6 flex flex-col flex-1">
+                {p.tag && (
+                  <span className={`self-start text-xs font-bold px-3 py-1 rounded-full ${p.tag === "Mais pedido" ? "bg-orange-100 text-orange-700" : "bg-accent text-accent-foreground"}`}>
+                    {p.tag}
+                  </span>
+                )}
+                <h3 className="font-bold text-xl tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>{p.name}</h3>
+                {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
+                {isGdp ? (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-3 uppercase tracking-wide font-semibold">Taxa de entrega</p>
+                    <p className="text-3xl font-extrabold text-primary" data-testid={`product-price-${i}`} style={{ fontFamily: "Manrope" }}>{brl(p.price)}</p>
+                    <p className="text-sm font-bold text-green-700 mt-0.5">1ª compra: cupom automático de R$ 10 (entrega por R$ 10)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Recarga gratuita pelo benefício do Governo · sujeito a validação do CPF</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-3 uppercase tracking-wide font-semibold">À vista</p>
+                    <p className="text-3xl font-extrabold text-primary" data-testid={`product-price-${i}`} style={{ fontFamily: "Manrope" }}>{brl(p.price)}</p>
+                    {p.card_price && <p className="text-sm text-muted-foreground mt-0.5">{brl(p.card_price)} no cartão</p>}
+                  </>
+                )}
+                <button
+                  onClick={() => navigate(`/pedido/${p.id}`)}
+                  data-testid={`order-button-${i}`}
+                  className="mt-5 w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" /> Pedir agora
+                </button>
+              </div>
+            </article>
+            );
+          })}
         </div>
       </section>
 
@@ -332,10 +384,10 @@ export default function Home() {
           </div>
           <div>
             <h3 className="font-bold mb-3" style={{ fontFamily: "Manrope" }}>Navegação</h3>
-            {["inicio", "produtos", "promocoes", "sobre", "contato"].map((s) => (
+            {["inicio", "gasdopovo", "produtos", "sobre", "contato"].map((s) => (
               <button key={s} onClick={() => document.querySelector(`#${s}`)?.scrollIntoView({ behavior: "smooth" })}
                 className="text-sm text-white/70 hover:text-white block capitalize transition-colors" data-testid={`footer-nav-${s}`}>
-                {s === "inicio" ? "Início" : s === "promocoes" ? "Promoções" : s}
+                {s === "inicio" ? "Início" : s === "gasdopovo" ? "Gás do Povo" : s}
               </button>
             ))}
           </div>

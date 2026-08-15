@@ -136,8 +136,9 @@ export default function OrderFlow() {
           complement: form.complement, neighborhood: form.neighborhood, city: form.city,
         },
         note: form.note,
-        coupon_code: loyaltyApplies ? "" : (appliedCoupon?.code || ""),
-        use_credit: loyaltyApplies ? false : useCredit,
+        cpf: form.cpf || "",
+        coupon_code: appliedCoupon?.code || "",
+        use_credit: useCredit,
         referral_code: localStorage.getItem("sf_ref") || "",
       }, { withCredentials: true });
       setResult(r.data);
@@ -159,14 +160,14 @@ export default function OrderFlow() {
     .map((p) => ({ id: p.id, name: p.name, qty: quantities[p.id], unit: priceFor(p) }));
   const totalQty = cartItems.reduce((s, it) => s + it.qty, 0);
   const subtotal = cartItems.reduce((s, it) => s + it.unit * it.qty, 0);
-  const loyaltyApplies = Boolean(loyaltyInfo?.next_is_discount && !isBusiness);
-  const loyaltyAmount = loyaltyApplies ? Math.min(settings?.loyalty_discount_value ?? 10, subtotal) : 0;
-  const couponDiscount = appliedCoupon && !isBusiness && !loyaltyApplies
+  const loyaltyApplies = false;
+  const hasGdp = cartItems.some((it) => it.name.toLowerCase().includes("gás do povo") || it.name.toLowerCase().includes("gas do povo"));
+  const couponDiscount = appliedCoupon && !isBusiness
     ? (appliedCoupon.type === "percent" ? subtotal * appliedCoupon.value / 100 : Math.min(appliedCoupon.value, subtotal))
     : 0;
   const availableCredit = referralInfo?.credit || 0;
-  const creditUsed = useCredit && !isBusiness && !loyaltyApplies ? Math.min(availableCredit, Math.max(subtotal - couponDiscount, 0)) : 0;
-  const total = isBusiness ? 0 : Math.max(subtotal - couponDiscount - creditUsed - loyaltyAmount, 0);
+  const creditUsed = useCredit && !isBusiness ? Math.min(availableCredit, Math.max(subtotal - couponDiscount, 0)) : 0;
+  const total = isBusiness ? 0 : Math.max(subtotal - couponDiscount - creditUsed, 0);
 
   return (
     <div className="max-w-md mx-auto px-5 pb-32">
@@ -309,9 +310,13 @@ export default function OrderFlow() {
               <p className="text-xs text-muted-foreground -mt-1" data-testid="card-price-note">Preço no cartão: {brl(product.card_price)} / unidade</p>
             )}
           </div>
-          {loyaltyApplies && (
-            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800 font-semibold" data-testid="loyalty-applies-banner">
-              🎁 Este é seu 6º pedido: R$ 10 de desconto de fidelidade aplicado automaticamente! (não combinável com cupons ou crédito)
+          {hasGdp && (
+            <div>
+              <label className="font-medium text-sm block mb-1.5">CPF do titular do benefício (Gás do Povo) *</label>
+              <input value={form.cpf || ""} onChange={(e) => setForm((f) => ({ ...f, cpf: e.target.value.replace(/\D/g, "").slice(0, 11) }))}
+                type="tel" inputMode="numeric" data-testid="input-cpf"
+                className="w-full h-14 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Somente números" />
+              <p className="text-xs text-muted-foreground mt-1.5">Adianta a verificação do benefício pelo nosso atendente.</p>
             </div>
           )}
           {!isBusiness && !loyaltyApplies && (
@@ -379,13 +384,15 @@ export default function OrderFlow() {
               {form.note && <p><strong className="text-foreground">Obs:</strong> {form.note}</p>}
             </div>
             <hr className="border-border" />
-            {!isBusiness && (couponDiscount > 0 || creditUsed > 0 || loyaltyAmount > 0) && (
+            {!isBusiness && (couponDiscount > 0 || creditUsed > 0) && (
               <div className="text-sm space-y-1">
                 <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
                 {couponDiscount > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-coupon-discount"><span>Cupom {appliedCoupon.code}</span><span>-{brl(couponDiscount)}</span></div>}
                 {creditUsed > 0 && <div className="flex justify-between text-green-700 font-semibold" data-testid="summary-credit-discount"><span>Crédito de indicação</span><span>-{brl(creditUsed)}</span></div>}
-                {loyaltyAmount > 0 && <div className="flex justify-between text-orange-700 font-semibold" data-testid="summary-loyalty-discount"><span>🎁 Fidelidade (6º pedido)</span><span>-{brl(loyaltyAmount)}</span></div>}
               </div>
+            )}
+            {hasGdp && (
+              <p className="text-xs font-semibold text-orange-700" data-testid="summary-gdp-note">🟡 Pedido Gás do Povo: recarga gratuita pelo benefício — o valor acima é a taxa de entrega. Nosso atendente confirmará seu CPF no WhatsApp.</p>
             )}
             {isBusiness && useCredit && availableCredit > 0 && (
               <p className="text-sm text-green-700 font-semibold" data-testid="summary-business-credit">Crédito de {brl(availableCredit)} será informado no pedido para abater na negociação</p>
@@ -415,9 +422,14 @@ export default function OrderFlow() {
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight mt-5" style={{ fontFamily: "Manrope" }}>Pedido enviado!</h1>
           <p className="text-muted-foreground mt-2">Seu WhatsApp deve ter aberto com a mensagem pronta. Se não abriu, use os botões abaixo.</p>
-          {result.loyalty_discount && (
-            <div className="mt-4 rounded-2xl bg-orange-100 text-orange-700 font-bold p-4" data-testid="loyalty-discount-notice">
-              🎁 Este pedido tem desconto de fidelidade!
+          {result.loyalty_coupon && (
+            <div className="mt-4 rounded-2xl bg-orange-100 text-orange-700 font-bold p-4" data-testid="loyalty-coupon-won">
+              🎁 Você completou 3/3 no cartão fidelidade e ganhou um cupom de {brl(result.loyalty_coupon.value)} para a próxima compra! Código: <span className="tracking-widest">{result.loyalty_coupon.code}</span>
+            </div>
+          )}
+          {result.auto_coupon && (
+            <div className="mt-4 rounded-2xl bg-green-100 text-green-700 font-semibold p-4 text-sm" data-testid="auto-coupon-notice">
+              ✅ Cupom {result.auto_coupon} aplicado automaticamente: sua 1ª entrega do Gás do Povo saiu com desconto!
             </div>
           )}
           {result.referral_unlocked_now && (

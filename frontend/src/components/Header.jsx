@@ -11,7 +11,7 @@ import {
 const NAV = [
   { label: "Início", hash: "#inicio" },
   { label: "Produtos", hash: "#produtos" },
-  { label: "Promoções", hash: "#promocoes" },
+  { label: "Gás do Povo", hash: "#gasdopovo" },
   { label: "Comércios", route: "/comercios" },
   { label: "Sobre", hash: "#sobre" },
   { label: "Contato", hash: "#contato" },

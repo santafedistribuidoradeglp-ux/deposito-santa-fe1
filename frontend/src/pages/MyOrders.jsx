@@ -88,8 +88,8 @@ export default function MyOrders() {
             <Gift className="w-5 h-5" />
             <p className="font-bold" style={{ fontFamily: "Manrope" }}>Cartão fidelidade</p>
           </div>
-          <div className="grid grid-cols-5 gap-2 mt-4">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} data-testid={`stamp-${i}`}
                 className={`aspect-square rounded-full flex items-center justify-center text-sm font-bold ${i < loyalty.cycle_progress ? "bg-secondary text-white" : "bg-white/20 text-white/50"}`}>
                 {i + 1}
@@ -98,8 +98,8 @@ export default function MyOrders() {
           </div>
           <p className="text-sm text-white/85 mt-3">
             {loyalty.next_is_discount
-              ? "🎁 Seu próximo pedido tem desconto de fidelidade!"
-              : `Faltam ${loyalty.remaining} pedidos para R$ 10 de desconto no 6º`}
+              ? "🎁 Você ganhou um cupom grátis! Veja o código nos seus cupons"
+              : `Faltam ${loyalty.remaining} pedidos para ganhar um cupom grátis`}
           </p>
         </div>
       )}

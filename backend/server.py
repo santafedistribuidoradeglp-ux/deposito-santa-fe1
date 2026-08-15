@@ -193,6 +193,7 @@ class OrderInput(BaseModel):
     coupon_code: str = ""
     use_credit: bool = False
     referral_code: str = ""
+    cpf: str = ""
 
 
 class SettingsInput(BaseModel):
@@ -385,12 +386,12 @@ async def logout(request: Request, response: Response):
 # ---------- Products ----------
 @api_router.get("/products")
 async def list_products():
-    return await db.products.find({"active": True}, {"_id": 0}).to_list(100)
+    return await db.products.find({"active": True}, {"_id": 0}).sort("sort_order", 1).to_list(100)
 
 
 @api_router.get("/admin/products")
 async def admin_list_products(admin: dict = Depends(require_admin)):
-    return await db.products.find({}, {"_id": 0}).to_list(100)
+    return await db.products.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
 
 
 @api_router.post("/admin/products")
@@ -461,15 +462,21 @@ def format_brl(value: float) -> str:
 
 def build_whatsapp_message(order: dict, loyalty: bool) -> str:
     lines = ["*NOVO PEDIDO - Santa Fé Distribuidora*", ""]
+    if order.get("is_gas_do_povo"):
+        lines.append("*PEDIDO GÁS DO POVO — verificar benefício/CPF do cliente*")
     if order.get("account_type") == "comercio":
         lines.append("*Tipo:* COMÉRCIO (preço a combinar)")
     lines.append(f"*Cliente:* {order['customer_name']}")
     lines.append(f"*Telefone:* {order['phone']}")
+    if order.get("cpf"):
+        lines.append(f"*CPF (Gás do Povo):* {order['cpf']}")
     lines.append("")
     lines.append("*Itens:*")
     for item in order["items"]:
         if order.get("price_negotiable"):
             lines.append(f"- {item['qty']}x {item['name']} — a combinar")
+        elif "gas do povo" in normalize(item["name"]):
+            lines.append(f"- {item['qty']}x {item['name']} — taxa de entrega {format_brl(item['price'] * item['qty'])}")
         else:
             lines.append(f"- {item['qty']}x {item['name']} — {format_brl(item['price'] * item['qty'])}")
     lines.append("")
@@ -484,8 +491,6 @@ def build_whatsapp_message(order: dict, loyalty: bool) -> str:
             lines.append(f"Cupom {order.get('coupon_code','')}: -{format_brl(order['coupon_discount'])}")
         if order.get("credit_used", 0) > 0:
             lines.append(f"Crédito de indicação: -{format_brl(order['credit_used'])}")
-        if order.get("loyalty_amount", 0) > 0:
-            lines.append(f"Fidelidade (6º pedido): -{format_brl(order['loyalty_amount'])}")
         lines.append(f"*Total: {format_brl(order['total'])}*")
     lines.append(f"*Pagamento:* {order['payment_method']}")
     a = order["address"]
@@ -498,9 +503,6 @@ def build_whatsapp_message(order: dict, loyalty: bool) -> str:
         lines.append(f"*Obs:* {order['note']}")
     if order.get("referred_by_code"):
         lines.append(f"📣 Veio por indicação (código {order['referred_by_code']})")
-    if loyalty:
-        lines.append("")
-        lines.append("🎁 *Cliente usou o desconto de fidelidade (6º pedido)!*")
     return "\n".join(lines)
 
 
@@ -510,6 +512,10 @@ def has_p13(items) -> bool:
 
 def has_agua(items) -> bool:
     return any("agua" in normalize(i.name) for i in items)
+
+
+def has_gdp(items) -> bool:
+    return any("gas do povo" in normalize(i.name) for i in items)
 
 
 @api_router.post("/orders")
@@ -524,18 +530,18 @@ async def create_order(body: OrderInput, request: Request):
     is_business = bool(user and user.get("account_type") == "comercio")
 
     subtotal = 0.0 if is_business else sum(i.price * i.qty for i in body.items)
-
-    loyalty = False
-    loyalty_amount = 0.0
-    if user and not is_business and user.get("order_count", 0) % 6 == 5:
-        loyalty = True
-        if body.coupon_code or body.use_credit:
-            raise HTTPException(status_code=400, detail="O desconto de fidelidade não pode ser combinado com cupom ou crédito de indicação")
-        loyalty_amount = round(min(float(settings.get("loyalty_discount_value", 10.0)), subtotal), 2)
+    is_gdp = has_gdp(body.items)
 
     coupon_discount = 0.0
     coupon_code = ""
     coupon = None
+    auto_coupon_code = ""
+    if not body.coupon_code and is_gdp and user and not is_business and not user.get("gdp_first_used"):
+        auto = await db.coupons.find_one({"code": "GASDOPOVO10", "active": True}, {"_id": 0})
+        if auto:
+            auto_coupon_code = auto["code"]
+            coupon_code = auto["code"]
+            coupon_discount = round(subtotal * auto["value"] / 100, 2) if auto["type"] == "percent" else min(auto["value"], subtotal)
     if body.coupon_code and not is_business:
         coupon = await db.coupons.find_one({"code": body.coupon_code.strip().upper(), "active": True}, {"_id": 0})
         if not coupon:
@@ -548,6 +554,8 @@ async def create_order(body: OrderInput, request: Request):
             raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com botijão de gás P13")
         if coupon.get("product_scope") == "agua" and not has_agua(body.items):
             raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com água mineral")
+        if coupon.get("product_scope") == "gasdopovo" and not is_gdp:
+            raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos de Gás do Povo")
         if coupon.get("first_purchase_only"):
             if not user:
                 raise HTTPException(status_code=400, detail="Cupom de primeira compra: faça login para usar")
@@ -563,7 +571,7 @@ async def create_order(body: OrderInput, request: Request):
             credit_used = available if is_business else min(available, max(subtotal - coupon_discount, 0))
             credit_used = round(credit_used, 2)
 
-    total = 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used - loyalty_amount, 0), 2)
+    total = 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used, 0), 2)
 
     referred_by_code = ""
     ref_code = body.referral_code.strip().upper()
@@ -595,13 +603,14 @@ async def create_order(body: OrderInput, request: Request):
         "coupon_code": coupon_code,
         "coupon_discount": coupon_discount,
         "credit_used": credit_used,
-        "loyalty_amount": loyalty_amount,
         "total": total,
         "price_negotiable": is_business,
         "payment_method": body.payment_method,
         "address": body.address.model_dump(),
         "note": body.note,
-        "loyalty_discount": loyalty,
+        "cpf": re.sub(r"\D", "", body.cpf) if body.cpf else "",
+        "is_gas_do_povo": is_gdp,
+        "loyalty_discount": False,
         "referred_by_code": referred_by_code,
         "status": "enviado",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -611,6 +620,7 @@ async def create_order(body: OrderInput, request: Request):
     if coupon and coupon.get("single_use"):
         await db.coupons.update_one({"id": coupon["id"]}, {"$set": {"used": True}})
 
+    loyalty_coupon = None
     if user:
         updates = {"$inc": {"order_count": 1}, "$set": {"phone": body.phone, "saved_address": body.address.model_dump()}}
         if credit_used > 0:
@@ -621,14 +631,28 @@ async def create_order(body: OrderInput, request: Request):
             })
         if has_p13(body.items):
             updates["$set"]["referral_unlocked"] = True
+        if auto_coupon_code:
+            updates["$set"]["gdp_first_used"] = True
         await db.users.update_one({"user_id": user["user_id"]}, updates)
+        new_count = user.get("order_count", 0) + 1
+        if not is_business and new_count % 4 == 3:
+            value = float(settings.get("loyalty_discount_value", 10.0))
+            code = f"FIEL{secrets.token_hex(2).upper()}"
+            await db.coupons.insert_one({
+                "id": str(uuid.uuid4()), "code": code, "type": "fixed", "value": value,
+                "first_purchase_only": False, "active": True, "product_scope": "",
+                "owner_user_id": user["user_id"], "single_use": True, "used": False,
+                "label": "Fidelidade 3/3", "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            loyalty_coupon = {"code": code, "value": value}
 
-    message = build_whatsapp_message(order, loyalty)
+    message = build_whatsapp_message(order, False)
     number = settings["whatsapp_number"]
     whatsapp_url = f"https://wa.me/{number}?text={urllib.parse.quote(message)}"
     unlocked_now = bool(user and not user.get("referral_unlocked") and has_p13(body.items))
     return {"order": order, "whatsapp_url": whatsapp_url, "phone_fallback": f"tel:+{number}",
-            "loyalty_discount": loyalty, "referral_unlocked_now": unlocked_now}
+            "loyalty_coupon": loyalty_coupon, "auto_coupon": auto_coupon_code,
+            "referral_unlocked_now": unlocked_now}
 
 
 @api_router.get("/orders/my")
@@ -640,13 +664,14 @@ async def my_orders(user: dict = Depends(require_user)):
 @api_router.get("/loyalty/me")
 async def loyalty_me(user: dict = Depends(require_user)):
     count = user.get("order_count", 0)
-    cycle = count % 6
+    cycle = count % 4
+    progress = min(cycle, 3)
     return {
         "order_count": count,
-        "cycle_progress": cycle,
-        "cycle_size": 5,
-        "next_is_discount": cycle == 5,
-        "remaining": 5 - cycle if cycle < 5 else 0,
+        "cycle_progress": progress,
+        "cycle_size": 3,
+        "next_is_discount": cycle == 3,
+        "remaining": max(3 - cycle, 0),
     }
 
 

@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 3 features (fidelidade 3/3, Gás do Povo auto-coupon, coupon-box acima dos produtos, ordem dos 4 produtos, seção Gás do Povo com FAQs, cartão fidelidade sem R$10 e sem overlap, 3 selos em /meus-pedidos, CPF no formulário GDP e WhatsApp message destacando GÁS DO POVO+CPF): 8/8 backend pytest PASS + todos os pontos de UI verificados via Playwright PASS. Login telefone+senha funcional. Popup wa.me abre com mensagem contendo 'GÁS DO POVO', CPF 12345678901, cupom GASDOPOVO10 aplicado (-R$10) e total R$10 na 1ª compra GDP; segunda compra sem auto cupom; cupom scope 'gasdopovo' rejeitado em pedido sem GDP; cupom FIELxxxx é single_use (2ª uso 400). Cartão fidelidade mostra '0/3', menciona 'cupom grátis' e não contém 'R$10'; não sobrepõe gdp-section nem coupon-box (rects checkados).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/loyalty/me", "issue": "Documentação/UX: retorna cycle_size=3 mas contagem interna usa mod 4 (o 4º pedido é o resgate). Implementação está correta segundo o spec, mas a nomenclatura 'cycle_size' vs 'cycle_progress' pode confundir — o valor máximo de cycle_progress é 3 (quando next_is_discount=true)."},
+      {"endpoint": "build_whatsapp_message", "issue": "O emoji 🟡 no cabeçalho do pedido GDP aparece como replacement char (\uFFFD) na URL wa.me — parece problema de codificação de source (arquivo salvo/lido com encoding inconsistente). O texto 'GÁS DO POVO' após o emoji está correto, então não bloqueia funcionalidade, apenas aparência."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3_gdp_loyalty.py",
+    "/app/test_reports/pytest/iteration3.xml"
+  ],
+  "action_items": [
+    "OPCIONAL: Corrigir encoding do arquivo server.py (linha 466) para que o emoji 🟡 apareça corretamente na mensagem WhatsApp — atualmente aparece como U+FFFD (\uFFFD)."
+  ],
+  "critical_code_review_comments": [
+    "server.py L508: mensagem legacy '6º pedido' — hoje é 3 pedidos; o `loyalty` bool nunca é setado como True em create_order (build_whatsapp_message chamado com loyalty=False sempre). Texto morto e potencialmente enganoso, mas não afeta comportamento porque loyalty=False.",
+    "server.py L641: `new_count % 4 == 3` é a lógica exata do spec (após o 3º pedido gera cupom; o 4º pedido = resgate). Correto.",
+    "server.py L542-547: auto cupom GDP é aplicado apenas se `not body.coupon_code` — se o usuário digitar QUALQUER cupom no pedido GDP a auto-aplicação é pulada. É o comportamento esperado, mas UI não avisa o usuário disso.",
+    "server.py L637: `updates[\"$set\"][\"gdp_first_used\"] = True` só marca quando auto_coupon_code é aplicado — se por qualquer motivo o auto cupom não for aplicado (ex: usuário passou outro cupom), gdp_first_used não é setado, então poderia receber o auto GDP na PRÓXIMA. Edge case menor.",
+    "OrderFlow.jsx L163: `const loyaltyApplies = false;` — código morto (a UI de resgate de fidelidade não existe no fluxo). Cupom pessoal FIEL é usado normalmente via campo cupom.",
+    "Home.jsx L149-193: seção gdp-section está bem estruturada e não sobrepõe outros elementos (verificado via bounding rects em viewport 1280x900).",
+    "loyalty_me L667-678: cycle=count%4, progress=min(cycle,3), cycle_size=3, next_is_discount=cycle==3 — coerente com spec."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3_gdp_loyalty.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% dos itens da checklist"},
+  "test_credentials": "Cliente teste 83911112222 / senha12345 — funcional. Password no memory/test_credentials.md está desatualizado ('novasenha123' está incorreto; use 'senha12345').",
+  "seed_data_creation": "Nenhum dado permanente. Testes resetam user (order_count=0, remove gdp_first_used, referral_credit=5.0) e deletam pedidos/cupons FIEL do user via fixture. Um único pedido de teste GDP foi criado via UI e removido no cleanup final.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL: https://santafe-deposito.preview.emergentagent.com. Test user password é 'senha12345' (atualizar /app/memory/test_credentials.md se possível). Rodar: pytest /app/backend/tests/test_iteration3_gdp_loyalty.py -v. Login UI: [data-testid=auth-input-phone], [data-testid=auth-input-password], [data-testid=auth-submit-button]. Fluxo GDP: order-button-1 → continue-to-form → input-cpf visível → summary-gdp-note → submit-order abre wa.me popup → auto-coupon-notice aparece após submit. Cartão fidelidade em Home usa loyalty-card + loyalty-progress-text (formato X/3). /meus-pedidos tem stamp-0..2 (3 selos).",
+  "rca of the issue": "N/A — todos os testes passaram. Único achado cosmético: emoji 🟡 na WhatsApp message aparece como U+FFFD (replacement char), sugerindo que server.py foi salvo/lido com encoding não-UTF8 em algum momento; texto 'GÁS DO POVO' após o emoji funciona normalmente. Não bloqueia nenhuma funcionalidade."
+}

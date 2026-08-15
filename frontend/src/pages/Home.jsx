@@ -1,22 +1,34 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { Clock, MapPin, Gift, Truck } from "lucide-react";
+import {
+  Clock, MapPin, Gift, Truck, ShieldCheck, CreditCard, MessageCircle,
+  Zap, Instagram, Phone, Flame,
+} from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
+import { ProductVisual } from "../components/ProductVisual";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const ADDRESS = "Rua Herotildes Bulhões Pinheiros, 166, Cidade Verde, João Pessoa - PB";
 
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loyalty, setLoyalty] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, login } = useAuth();
 
   useEffect(() => {
     axios.get(`${API}/products`).then((r) => setProducts(r.data));
     axios.get(`${API}/settings`).then((r) => setSettings(r.data));
   }, []);
+
+  useEffect(() => {
+    if (location.hash && !location.hash.includes("session_id")) {
+      setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth" }), 200);
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     if (user) {
@@ -26,85 +38,266 @@ export default function Home() {
     }
   }, [user]);
 
+  const waNumber = settings?.whatsapp_number || "5583999170131";
+  const waLink = (text) => `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+  const waGeneric = waLink("Olá! Vim pelo site da Santa Fé Distribuidora e gostaria de fazer um pedido.");
+
   return (
-    <div className="max-w-md mx-auto px-5 pb-24">
+    <div className="pb-0">
       {settings && !settings.store_open && (
-        <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3 fade-up" data-testid="store-closed-banner">
-          <Clock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-800">
-            <strong>Estamos fechados agora.</strong> Você pode enviar seu pedido e ele será atendido na abertura ({settings.hours_weekday_open} seg–sáb, {settings.hours_sunday_open} dom).
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-3" data-testid="store-closed-banner">
+          <p className="max-w-6xl mx-auto text-sm text-amber-800 flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span><strong>Estamos fechados agora.</strong> Você pode enviar seu pedido e ele será atendido na abertura (todos os dias às {settings.hours_weekday_open}).</span>
           </p>
         </div>
       )}
 
-      <section className="mt-6 fade-up">
-        <h1 className="text-3xl font-extrabold tracking-tight leading-tight" style={{ fontFamily: "Manrope" }}>
-          Gás e água <span className="text-primary">na sua porta</span>
-        </h1>
-        <p className="text-muted-foreground mt-2 text-base">Entrega rápida em João Pessoa. Peça pelo WhatsApp em menos de 1 minuto.</p>
-        <div className="flex gap-2 mt-4">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-accent text-accent-foreground rounded-full px-3 py-1.5">
-            <Truck className="w-3.5 h-3.5" /> Entrega grátis
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full px-3 py-1.5">
-            <Gift className="w-3.5 h-3.5" /> 10 pedidos = desconto no 11º
-          </span>
+      {/* HERO */}
+      <section id="inicio" className="bg-[#0c2d48] text-white relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-secondary/15 blur-3xl" />
+        <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-primary/25 blur-3xl" />
+        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 grid md:grid-cols-2 gap-10 items-center relative">
+          <div className="fade-up">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/10 border border-white/15 rounded-full px-4 py-2">
+              <Zap className="w-3.5 h-3.5 text-secondary" /> Santa Fé Distribuidora
+            </span>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.05] mt-5" style={{ fontFamily: "Manrope" }}>
+              Gás e água<br /><span className="text-secondary">na sua casa!</span>
+            </h1>
+            <p className="text-white/80 mt-4 text-base md:text-lg">
+              Entrega rápida e atendimento de confiança em <strong className="text-white">João Pessoa</strong>.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-sm">
+              <div className="flex items-center gap-2 text-white/85"><Truck className="w-4 h-4 text-secondary shrink-0" /> Entrega rápida e segura</div>
+              <div className="flex items-center gap-2 text-white/85"><ShieldCheck className="w-4 h-4 text-secondary shrink-0" /> Produtos de qualidade</div>
+              <div className="flex items-center gap-2 text-white/85"><Clock className="w-4 h-4 text-secondary shrink-0" /> Todos os dias, das 7h às 19h</div>
+              <div className="flex items-center gap-2 text-white/85"><CreditCard className="w-4 h-4 text-secondary shrink-0" /> Pix, cartão e dinheiro</div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-8">
+              <button onClick={() => document.querySelector("#produtos")?.scrollIntoView({ behavior: "smooth" })}
+                data-testid="hero-order-button"
+                className="h-14 px-8 rounded-full bg-secondary text-white text-lg font-bold shadow-lg shadow-secondary/30 hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform">
+                Fazer meu pedido
+              </button>
+              <a href={waGeneric} target="_blank" rel="noopener noreferrer" data-testid="hero-whatsapp-link"
+                className="h-14 px-6 rounded-full border-2 border-white/25 text-white text-lg font-bold flex items-center gap-2 hover:bg-white/10 transition-colors">
+                <MessageCircle className="w-5 h-5" /> WhatsApp
+              </a>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center justify-center relative fade-up" style={{ animationDelay: "150ms" }}>
+            <div className="hero-cylinder">
+              <div className="hero-cylinder-label">P13</div>
+            </div>
+            <div className="absolute top-6 right-8 bg-white text-[#0c2d48] rounded-2xl px-4 py-3 shadow-xl flex items-center gap-2 rotate-3">
+              <Truck className="w-5 h-5 text-secondary" />
+              <div className="leading-tight text-xs font-bold uppercase">Entrega<br /><span className="text-sm">Rápida</span></div>
+            </div>
+          </div>
         </div>
       </section>
 
+      {/* LOYALTY */}
       {loyalty && (
-        <div className="mt-6 rounded-2xl bg-primary text-white p-5 fade-up" data-testid="loyalty-card">
-          <div className="flex items-center justify-between">
-            <p className="font-bold" style={{ fontFamily: "Manrope" }}>
-              {loyalty.next_is_discount ? "🎁 Seu próximo pedido tem desconto!" : "Cartão fidelidade"}
-            </p>
-            <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/10</span>
+        <div className="max-w-6xl mx-auto px-5 -mt-6 relative z-10">
+          <div className="rounded-2xl bg-primary text-white p-5 shadow-lg fade-up" data-testid="loyalty-card">
+            <div className="flex items-center justify-between">
+              <p className="font-bold flex items-center gap-2" style={{ fontFamily: "Manrope" }}>
+                <Gift className="w-5 h-5" />
+                {loyalty.next_is_discount ? "Seu próximo pedido tem desconto de fidelidade!" : "Cartão fidelidade"}
+              </p>
+              <span className="text-sm font-semibold" data-testid="loyalty-progress-text">{loyalty.cycle_progress}/10</span>
+            </div>
+            <div className="mt-3 h-2.5 bg-white/25 rounded-full overflow-hidden">
+              <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 10) * 10}%` }} />
+            </div>
+            {!loyalty.next_is_discount && (
+              <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para seu desconto no 11º</p>
+            )}
           </div>
-          <div className="mt-3 h-2.5 bg-white/25 rounded-full overflow-hidden">
-            <div className="h-full bg-secondary rounded-full transition-[width] duration-500" style={{ width: `${Math.min(loyalty.cycle_progress, 10) * 10}%` }} />
-          </div>
-          {!loyalty.next_is_discount && (
-            <p className="text-xs text-white/80 mt-2">Faltam {loyalty.remaining} pedidos para seu desconto de fidelidade</p>
-          )}
         </div>
       )}
 
-      <section className="mt-8 space-y-5">
-        <h2 className="text-lg font-bold tracking-tight" style={{ fontFamily: "Manrope" }}>Nossos produtos</h2>
-        {products.map((p, i) => (
-          <div key={p.id} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up" style={{ animationDelay: `${i * 90}ms` }} data-testid={`product-card-${i}`}>
-            <img src={p.image_url} alt={p.name} className="w-full h-44 object-cover" />
-            <div className="p-6">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h3 className="font-bold text-xl tracking-tight" style={{ fontFamily: "Manrope" }}>{p.name}</h3>
-                  <p className="text-2xl font-extrabold text-primary mt-1" data-testid={`product-price-${i}`}>{brl(p.price)}</p>
-                </div>
+      {/* PRODUTOS */}
+      <section id="produtos" className="max-w-6xl mx-auto px-5 py-16">
+        <div className="max-w-xl">
+          <span className="text-xs font-bold uppercase tracking-widest text-secondary">Nossos produtos</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Escolha o que você precisa</h2>
+          <p className="text-muted-foreground mt-2">Produtos de qualidade e preços claros. Clique em pedir e fale direto com a Santa Fé.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          {products.map((p, i) => (
+            <article key={p.id} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden fade-up flex flex-col" style={{ animationDelay: `${i * 90}ms` }} data-testid={`product-card-${i}`}>
+              {p.image_url ? (
+                <img src={p.image_url} alt={p.name} className="w-full h-[190px] object-cover" />
+              ) : (
+                <ProductVisual visual={p.visual} name={p.name} />
+              )}
+              <div className="p-6 flex flex-col flex-1">
+                {p.tag && (
+                  <span className={`self-start text-xs font-bold px-3 py-1 rounded-full ${p.tag === "Mais pedido" ? "bg-orange-100 text-orange-700" : "bg-accent text-accent-foreground"}`}>
+                    {p.tag}
+                  </span>
+                )}
+                <h3 className="font-bold text-xl tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>{p.name}</h3>
+                {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
+                <p className="text-xs text-muted-foreground mt-3 uppercase tracking-wide font-semibold">À vista</p>
+                <p className="text-3xl font-extrabold text-primary" data-testid={`product-price-${i}`} style={{ fontFamily: "Manrope" }}>{brl(p.price)}</p>
+                {p.card_price && <p className="text-sm text-muted-foreground mt-0.5">{brl(p.card_price)} no cartão</p>}
                 <button
                   onClick={() => navigate(`/pedido/${p.id}`)}
                   data-testid={`order-button-${i}`}
-                  className="h-14 px-8 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform shrink-0"
+                  className="mt-5 w-full h-14 rounded-full bg-secondary text-white text-lg font-bold shadow-md hover:bg-secondary/90 active:scale-[0.98] transition-colors transition-transform flex items-center justify-center gap-2"
                 >
-                  Pedir
+                  <MessageCircle className="w-5 h-5" /> Pedir agora
                 </button>
               </div>
-            </div>
-          </div>
-        ))}
+            </article>
+          ))}
+        </div>
       </section>
 
+      {/* PROMOÇÕES */}
+      <section id="promocoes" className="max-w-6xl mx-auto px-5 pb-16">
+        <div className="rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 text-white p-8 md:p-10 flex flex-col md:flex-row md:items-center gap-6 justify-between shadow-lg">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest bg-white/20 rounded-full px-4 py-1.5">
+              <Flame className="w-3.5 h-3.5" /> Promoções
+            </span>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-3" style={{ fontFamily: "Manrope" }}>Em breve, ofertas especiais da Santa Fé.</h2>
+            <p className="text-white/90 mt-2">Vamos usar este espaço para destacar as melhores ofertas e facilitar ainda mais seus pedidos.</p>
+          </div>
+          <a href={waLink("Olá! Gostaria de saber quais são as promoções de hoje.")} target="_blank" rel="noopener noreferrer" data-testid="promo-whatsapp-link"
+            className="h-14 px-7 rounded-full bg-white text-orange-600 font-bold flex items-center justify-center gap-2 shrink-0 hover:bg-orange-50 active:scale-[0.98] transition-colors transition-transform">
+            Quero saber as ofertas →
+          </a>
+        </div>
+      </section>
+
+      {/* SOBRE */}
+      <section id="sobre" className="bg-white border-y border-border">
+        <div className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10 items-center">
+          <div className="rounded-3xl bg-[#0c2d48] text-white p-8 relative overflow-hidden min-h-[260px] flex flex-col justify-end">
+            <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-secondary/20 blur-2xl" />
+            <div className="flex items-center gap-3 relative">
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                <Flame className="w-6 h-6 text-white" />
+              </div>
+              <p className="font-extrabold text-2xl tracking-tight" style={{ fontFamily: "Manrope" }}>Santa Fé<br /><span className="text-sm font-semibold text-white/70 uppercase tracking-widest">Distribuidora</span></p>
+            </div>
+            <p className="mt-5 text-sm text-white/75 flex items-center gap-1.5 relative"><MapPin className="w-4 h-4 text-secondary" /> Cidade Verde · João Pessoa</p>
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Conheça a Santa Fé</span>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Gás e água mineral com atendimento de confiança.</h2>
+            <p className="text-muted-foreground mt-3">A Santa Fé Distribuidora atende você em João Pessoa com gás e água mineral, buscando tornar seu pedido simples, rápido e seguro.</p>
+            <div className="space-y-4 mt-6">
+              {[
+                { icon: Truck, title: "Entrega rápida", desc: "Levamos até você com agilidade." },
+                { icon: ShieldCheck, title: "Qualidade", desc: "Produtos para o seu dia a dia." },
+                { icon: Clock, title: "Todos os dias", desc: "Das 7h às 19h." },
+              ].map((it) => (
+                <div key={it.title} className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                    <it.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-bold">{it.title}</p>
+                    <p className="text-sm text-muted-foreground">{it.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CONTATO */}
+      <section id="contato" className="max-w-6xl mx-auto px-5 py-16 grid md:grid-cols-2 gap-10">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-widest text-secondary">Fale com a gente</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mt-2" style={{ fontFamily: "Manrope" }}>Precisou de gás ou água?</h2>
+          <p className="text-muted-foreground mt-2">Faça seu pedido pelo site ou chame direto no WhatsApp.</p>
+          <a href={waGeneric} target="_blank" rel="noopener noreferrer" data-testid="contact-whatsapp-button"
+            className="mt-6 inline-flex h-14 px-8 rounded-full bg-[#25D366] text-white text-lg font-bold items-center gap-2 hover:bg-[#20bd5a] active:scale-[0.98] transition-colors transition-transform">
+            <MessageCircle className="w-5 h-5" /> Chamar no WhatsApp
+          </a>
+          <div className="space-y-4 mt-8 text-sm">
+            <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Endereço</strong><br />{ADDRESS}</span></div>
+            <div className="flex items-start gap-3"><Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Horário</strong><br />Todos os dias, das 7h às 19h</span></div>
+            <div className="flex items-start gap-3"><Instagram className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Instagram</strong><br /><a href="https://www.instagram.com/santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline" data-testid="instagram-link">@SANTAFEDISTRIBUIDORA</a></span></div>
+            <div className="flex items-start gap-3"><Phone className="w-5 h-5 text-primary shrink-0 mt-0.5" /><span><strong>Telefone</strong><br /><a href={`tel:+${waNumber}`} className="text-primary font-semibold hover:underline" data-testid="phone-link">(83) 99917-0131</a></span></div>
+          </div>
+        </div>
+        <div className="rounded-3xl overflow-hidden border border-border shadow-sm min-h-[320px]">
+          <iframe
+            title="Mapa da Santa Fé Distribuidora"
+            src={`https://www.google.com/maps?q=${encodeURIComponent(ADDRESS)}&output=embed`}
+            loading="lazy"
+            className="w-full h-full min-h-[320px] border-0"
+            data-testid="map-iframe"
+          />
+        </div>
+      </section>
+
+      {/* LOGIN INCENTIVO */}
       {!user && (
-        <div className="mt-8 rounded-2xl border border-dashed border-primary/40 bg-accent/50 p-5 text-center fade-up">
-          <p className="text-sm text-foreground font-medium">Entre com Google para ganhar pontos de fidelidade e salvar seu endereço</p>
-          <button onClick={login} data-testid="home-login-button" className="mt-3 h-12 px-6 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform">
-            Entrar com Google
-          </button>
+        <div className="max-w-6xl mx-auto px-5 pb-16">
+          <div className="rounded-2xl border border-dashed border-primary/40 bg-accent/50 p-6 text-center fade-up">
+            <p className="text-sm text-foreground font-medium">Entre com Google para ganhar pontos de fidelidade e salvar seu endereço — a cada 10 pedidos, o 11º tem desconto!</p>
+            <button onClick={login} data-testid="home-login-button" className="mt-3 h-12 px-6 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 active:scale-[0.98] transition-colors transition-transform">
+              Entrar com Google
+            </button>
+          </div>
         </div>
       )}
 
-      <footer className="mt-10 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5 pb-4">
-        <MapPin className="w-3.5 h-3.5" /> Entregamos somente em João Pessoa - PB
+      {/* FOOTER */}
+      <footer className="bg-[#0c2d48] text-white">
+        <div className="max-w-6xl mx-auto px-5 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center"><Flame className="w-5 h-5 text-white" /></div>
+              <span className="font-bold text-lg" style={{ fontFamily: "Manrope" }}>Santa Fé Distribuidora</span>
+            </div>
+            <p className="text-sm text-white/70 mt-3">Gás e água mineral com qualidade, preço justo e atendimento de confiança em João Pessoa.</p>
+          </div>
+          <div>
+            <h3 className="font-bold mb-3" style={{ fontFamily: "Manrope" }}>Contato</h3>
+            <a href={waGeneric} target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white block transition-colors" data-testid="footer-whatsapp-link">(83) 99917-0131</a>
+            <p className="text-sm text-white/70 mt-1">Todos os dias · 7h às 19h</p>
+          </div>
+          <div>
+            <h3 className="font-bold mb-3" style={{ fontFamily: "Manrope" }}>Navegação</h3>
+            {["inicio", "produtos", "promocoes", "sobre", "contato"].map((s) => (
+              <button key={s} onClick={() => document.querySelector(`#${s}`)?.scrollIntoView({ behavior: "smooth" })}
+                className="text-sm text-white/70 hover:text-white block capitalize transition-colors" data-testid={`footer-nav-${s}`}>
+                {s === "inicio" ? "Início" : s === "promocoes" ? "Promoções" : s}
+              </button>
+            ))}
+          </div>
+          <div>
+            <h3 className="font-bold mb-3" style={{ fontFamily: "Manrope" }}>Onde estamos</h3>
+            <p className="text-sm text-white/70">{ADDRESS}</p>
+            <a href="https://www.instagram.com/santafedistribuidora/" target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white mt-2 inline-flex items-center gap-1.5 transition-colors" data-testid="footer-instagram-link">
+              <Instagram className="w-4 h-4" /> Instagram
+            </a>
+          </div>
+        </div>
+        <div className="border-t border-white/10">
+          <div className="max-w-6xl mx-auto px-5 py-4 flex flex-col sm:flex-row justify-between gap-2 text-xs text-white/50">
+            <span>© 2026 Santa Fé Distribuidora. Todos os direitos reservados.</span>
+            <span>Feito para facilitar seu pedido.</span>
+          </div>
+        </div>
       </footer>
+
+      {/* FLOATING WHATSAPP */}
+      <a href={waGeneric} target="_blank" rel="noopener noreferrer" data-testid="floating-whatsapp-button"
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xl hover:bg-[#20bd5a] active:scale-[0.95] transition-colors transition-transform">
+        <MessageCircle className="w-7 h-7" />
+      </a>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Minus, Plus, ArrowLeft, Phone, MessageCircle, AlertTriangle } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
+import { ProductVisual } from "../components/ProductVisual";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const PAYMENTS = ["Dinheiro", "PIX", "Cartão na entrega"];
@@ -84,7 +85,7 @@ export default function OrderFlow() {
       const r = await axios.post(`${API}/orders`, {
         customer_name: form.customer_name,
         phone: form.phone,
-        items: [{ product_id: product.id, name: product.name, price: product.price, qty }],
+        items: [{ product_id: product.id, name: product.name, price: form.payment_method === "Cartão na entrega" && product.card_price ? product.card_price : product.price, qty }],
         payment_method: form.payment_method,
         address: {
           cep: form.cep, street: form.street, number: form.number,
@@ -105,7 +106,8 @@ export default function OrderFlow() {
 
   if (!product) return <div className="min-h-[50vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  const total = product.price * qty;
+  const unitPrice = form.payment_method === "Cartão na entrega" && product.card_price ? product.card_price : product.price;
+  const total = unitPrice * qty;
 
   return (
     <div className="max-w-md mx-auto px-5 pb-32">
@@ -124,10 +126,15 @@ export default function OrderFlow() {
         <>
         <div className="mt-6 mb-32 fade-up">
           <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
-            <img src={product.image_url} alt={product.name} className="w-full h-48 object-cover" />
+            {product.image_url ? (
+              <img src={product.image_url} alt={product.name} className="w-full h-48 object-cover" />
+            ) : (
+              <ProductVisual visual={product.visual} name={product.name} />
+            )}
             <div className="p-6">
               <h1 className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: "Manrope" }}>{product.name}</h1>
-              <p className="text-xl font-bold text-primary mt-1">{brl(product.price)} <span className="text-sm text-muted-foreground font-normal">/ unidade</span></p>
+              <p className="text-xl font-bold text-primary mt-1">{brl(product.price)} <span className="text-sm text-muted-foreground font-normal">/ unidade à vista</span></p>
+              {product.card_price && <p className="text-sm text-muted-foreground">{brl(product.card_price)} no cartão</p>}
               <div className="mt-6">
                 <p className="font-semibold mb-3">Quantidade</p>
                 <div className="flex items-center gap-5">
@@ -220,6 +227,9 @@ export default function OrderFlow() {
             <label className="font-medium text-sm block mb-1.5">Observação</label>
             <textarea value={form.note} onChange={set("note")} data-testid="input-note" rows={2}
               className="w-full rounded-xl border border-input px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Ponto de referência, troco..." />
+            {product.card_price && form.payment_method === "Cartão na entrega" && (
+              <p className="text-xs text-muted-foreground -mt-1" data-testid="card-price-note">Preço no cartão: {brl(product.card_price)} / unidade</p>
+            )}
           </div>
           {outsideCity && (
             <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-semibold" data-testid="outside-city-error">

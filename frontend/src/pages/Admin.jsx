@@ -14,7 +14,7 @@ const STATUSES = ["enviado", "em_entrega", "entregue", "cancelado"];
 const STATUS_LABELS = { enviado: "Enviado", em_entrega: "Em entrega", entregue: "Entregue", cancelado: "Cancelado" };
 const inputCls = "w-full h-12 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring";
 
-const EMPTY_PRODUCT = { name: "", price: "", image_url: "", active: true };
+const EMPTY_PRODUCT = { name: "", price: "", card_price: "", description: "", tag: "", visual: "", image_url: "", active: true };
 
 export default function Admin() {
   const { user, loading } = useAuth();
@@ -46,10 +46,10 @@ export default function Admin() {
   if (loading || !user || user.role !== "admin") return null;
 
   const openNew = () => { setEditing(null); setPform(EMPTY_PRODUCT); setDialogOpen(true); };
-  const openEdit = (p) => { setEditing(p); setPform({ name: p.name, price: p.price, image_url: p.image_url, active: p.active }); setDialogOpen(true); };
+  const openEdit = (p) => { setEditing(p); setPform({ name: p.name, price: p.price, card_price: p.card_price ?? "", description: p.description || "", tag: p.tag || "", visual: p.visual || "", image_url: p.image_url, active: p.active }); setDialogOpen(true); };
 
   const saveProduct = async () => {
-    const body = { ...pform, price: parseFloat(pform.price) };
+    const body = { ...pform, price: parseFloat(pform.price), card_price: pform.card_price === "" ? null : parseFloat(pform.card_price) };
     if (!body.name || isNaN(body.price)) { toast.error("Preencha nome e preço"); return; }
     try {
       if (editing) {
@@ -217,12 +217,28 @@ export default function Admin() {
               <label className="font-medium text-sm block mb-1.5">Nome</label>
               <input value={pform.name} onChange={(e) => setPform((f) => ({ ...f, name: e.target.value }))} data-testid="product-form-name" className={inputCls} />
             </div>
-            <div>
-              <label className="font-medium text-sm block mb-1.5">Preço (R$)</label>
-              <input value={pform.price} onChange={(e) => setPform((f) => ({ ...f, price: e.target.value }))} type="number" step="0.01" data-testid="product-form-price" className={inputCls} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Preço à vista (R$)</label>
+                <input value={pform.price} onChange={(e) => setPform((f) => ({ ...f, price: e.target.value }))} type="number" step="0.01" data-testid="product-form-price" className={inputCls} />
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Preço no cartão (R$)</label>
+                <input value={pform.card_price} onChange={(e) => setPform((f) => ({ ...f, card_price: e.target.value }))} type="number" step="0.01" data-testid="product-form-card-price" className={inputCls} placeholder="Opcional" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Descrição</label>
+                <input value={pform.description} onChange={(e) => setPform((f) => ({ ...f, description: e.target.value }))} data-testid="product-form-description" className={inputCls} placeholder="Botijão 13 kg" />
+              </div>
+              <div>
+                <label className="font-medium text-sm block mb-1.5">Etiqueta</label>
+                <input value={pform.tag} onChange={(e) => setPform((f) => ({ ...f, tag: e.target.value }))} data-testid="product-form-tag" className={inputCls} placeholder="Mais pedido" />
+              </div>
             </div>
             <div>
-              <label className="font-medium text-sm block mb-1.5">URL da foto</label>
+              <label className="font-medium text-sm block mb-1.5">URL da foto (opcional — sem foto usa desenho)</label>
               <input value={pform.image_url} onChange={(e) => setPform((f) => ({ ...f, image_url: e.target.value }))} data-testid="product-form-image" className={inputCls} />
             </div>
             <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">

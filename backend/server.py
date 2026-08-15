@@ -48,6 +48,10 @@ class Product(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     price: float
+    card_price: Optional[float] = None
+    description: str = ""
+    tag: str = ""
+    visual: str = ""
     image_url: str = ""
     active: bool = True
 
@@ -55,6 +59,10 @@ class Product(BaseModel):
 class ProductInput(BaseModel):
     name: str
     price: float
+    card_price: Optional[float] = None
+    description: str = ""
+    tag: str = ""
+    visual: str = ""
     image_url: str = ""
     active: bool = True
 
@@ -262,7 +270,7 @@ def format_brl(value: float) -> str:
 
 
 def build_whatsapp_message(order: dict, loyalty: bool, discount_percent: float) -> str:
-    lines = ["*NOVO PEDIDO - Santa Fe Depósito de Gás*", ""]
+    lines = ["*NOVO PEDIDO - Santa Fé Distribuidora*", ""]
     lines.append(f"*Cliente:* {order['customer_name']}")
     lines.append(f"*Telefone:* {order['phone']}")
     lines.append("")
@@ -383,19 +391,21 @@ async def root():
 async def seed():
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([
-            {"id": str(uuid.uuid4()), "name": "Botijão de Gás P13", "price": 110.0,
-             "image_url": "https://images.unsplash.com/photo-1503027470001-baf3fb214fe5?w=800&q=80", "active": True},
-            {"id": str(uuid.uuid4()), "name": "Água Mineral 20L", "price": 12.0,
-             "image_url": "https://images.pexels.com/photos/11860562/pexels-photo-11860562.jpeg?w=800", "active": True},
+            {"id": str(uuid.uuid4()), "name": "Gás P13 Supergasbras", "price": 120.0, "card_price": 125.0,
+             "description": "Botijão 13 kg", "tag": "Mais pedido", "visual": "gas-gold", "image_url": "", "active": True},
+            {"id": str(uuid.uuid4()), "name": "Água Mineral Sublime", "price": 17.0, "card_price": None,
+             "description": "Galão 20 litros", "tag": "Água mineral", "visual": "water-blue", "image_url": "", "active": True},
+            {"id": str(uuid.uuid4()), "name": "Água Mineral Itacoatiara", "price": 15.0, "card_price": None,
+             "description": "Galão 20 litros", "tag": "Água mineral", "visual": "water-light", "image_url": "", "active": True},
         ])
     if not await db.settings.find_one({"key": "store"}):
         await db.settings.insert_one({
             "key": "store",
-            "whatsapp_number": "5583999999999",
+            "whatsapp_number": "5583999170131",
             "hours_weekday_open": "07:00",
-            "hours_weekday_close": "18:00",
+            "hours_weekday_close": "19:00",
             "hours_sunday_open": "07:00",
-            "hours_sunday_close": "12:00",
+            "hours_sunday_close": "19:00",
             "loyalty_discount_percent": 10.0,
         })
 

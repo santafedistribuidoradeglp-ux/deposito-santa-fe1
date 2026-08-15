@@ -18,14 +18,22 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Desconto fidelidade: 10% default (admin edita %)
 
 ## Implementado (jun/2026)
+- Landing page baseada no HTML de referência do usuário: hero escuro "Gás e água na sua casa!", nav (Início/Produtos/Promoções/Sobre/Contato), seção promoções, sobre, contato com mapa Google embed, footer, botão WhatsApp flutuante
+- Dados reais: WhatsApp 5583999170131, horário todos os dias 07–19h, endereço Rua Herotildes Bulhões Pinheiros 166 Cidade Verde, Instagram @santafedistribuidora
+- 3 produtos: Gás P13 Supergasbras R$120 (R$125 cartão), Água Sublime R$17, Água Itacoatiara R$15 — visuais desenhados em CSS (sem fotos; campos image_url prontos p/ quando o usuário enviar logo/fotos)
+- Produto ganhou campos: card_price, description, tag, visual (admin edita tudo)
+- Fluxo de pedido usa card_price quando pagamento = cartão
 - Home com 2 produtos, banner loja fechada, cartão fidelidade (logado)
 - Fluxo de pedido: quantidade → formulário (ViaCEP, bloqueio fora de João Pessoa, pagamento dinheiro/PIX/cartão) → resumo → WhatsApp (wa.me com mensagem formatada) + fallback tel:
 - Debounce/anti-duplo-clique no envio; pedido registrado no banco (guest ou logado)
 - Fidelidade: a cada 10 pedidos o 11º marcado com desconto (flag na mensagem WhatsApp 🎁)
 - Meus Pedidos: histórico + cartão de selos 1–10
-- Admin (/admin): tabs Pedidos (status enviado/em_entrega/entregue/cancelado), Produtos (CRUD), Clientes (contagem pedidos), Config (WhatsApp, horários, % fidelidade)
+- Admin (/admin): tabs Pedidos (status enviado/em_entrega/entregue/cancelado), Produtos (CRUD com card_price/descrição/etiqueta), Clientes (contagem pedidos), Config (WhatsApp, horários, % fidelidade)
 - Endereço/telefone salvos no perfil ao pedir logado
 - Testes: backend 16/16 pass (/app/backend/tests/backend_test.py); E2E frontend ok; bug de overlay do botão qty corrigido (transform do fade-up quebrava fixed)
+
+## Pendente do usuário
+- Logo (logo-santafe.jpeg) e foto do depósito (deposito.jpeg) — usuário disse que vai enviar; ao receber, substituir ícone de chama no header/footer e o card escuro da seção Sobre/hero
 
 ## Backlog priorizado
 - P0: nenhum pendente

@@ -62,6 +62,147 @@ h1, h2, h3, h4 {
     .fade-up { animation: none; }
 }
 
+/* ---------- Product visuals (CSS-drawn) ---------- */
+.pv-wrap {
+    width: 100%;
+    height: 190px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+}
+.pv-gold { background: linear-gradient(160deg, #fef3c7 0%, #fcd34d 55%, #f59e0b 100%); }
+.pv-blue { background: linear-gradient(160deg, #dbeafe 0%, #7dd3fc 55%, #0284c7 100%); }
+.pv-light { background: linear-gradient(160deg, #f0fdfa 0%, #bae6fd 60%, #67e8f9 100%); }
+
+.gas-cylinder {
+    width: 92px;
+    height: 128px;
+    background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 60%, #d97706 100%);
+    border-radius: 26px 26px 14px 14px;
+    position: relative;
+    box-shadow: inset -12px 0 18px rgba(0,0,0,0.14), 0 10px 22px rgba(120,53,15,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gas-handle {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 20px;
+    border: 6px solid #b45309;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+}
+.gas-label {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: #d97706;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.gas-base {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 10px;
+    background: #92400e;
+    border-radius: 4px;
+}
+
+.water-jug {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 10px 18px rgba(2,62,138,0.3));
+}
+.jug-cap {
+    width: 34px;
+    height: 12px;
+    background: #075985;
+    border-radius: 5px 5px 0 0;
+}
+.jug-neck {
+    width: 46px;
+    height: 12px;
+    background: linear-gradient(180deg, #bae6fd, #7dd3fc);
+    border-radius: 4px;
+}
+.jug-body {
+    width: 96px;
+    height: 108px;
+    background: linear-gradient(180deg, rgba(224,242,254,0.95) 0%, rgba(125,211,252,0.9) 70%, rgba(56,189,248,0.92) 100%);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.6);
+    box-shadow: inset -10px 0 16px rgba(2,62,138,0.15);
+}
+.jug-body span {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: #075985;
+    background: rgba(255,255,255,0.85);
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+/* Hero decorative cylinder */
+.hero-cylinder {
+    width: 130px;
+    height: 185px;
+    background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 55%, #d97706 100%);
+    border-radius: 34px 34px 18px 18px;
+    position: relative;
+    box-shadow: inset -16px 0 26px rgba(0,0,0,0.18), 0 18px 40px rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.hero-cylinder::before {
+    content: "";
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 26px;
+    border: 8px solid #b45309;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+}
+.hero-cylinder-label {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    color: #d97706;
+    background: #fff;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+}
+
+
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;

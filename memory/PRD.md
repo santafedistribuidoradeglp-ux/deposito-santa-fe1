@@ -71,6 +71,11 @@ Site responsivo (PWA) para pedidos de botijão P13 e água mineral 20L. Cliente 
 - Faixa de promoções editável: settings.promo_title/promo_text (campos no admin Config), Home lê das settings
 - Admin por telefone: 83988331044 / santafe2026 (role admin, login em /entrar) — atualizado em test_credentials.md
 
+## Atualizações (jun/2026 — trocar senha + faixa entrega grátis)
+- Trocar senha no perfil: POST /api/auth/change-password (auth, exige senha atual, só contas telefone); card expansível "Trocar senha" em /meus-pedidos. Testado E2E (troca + login com nova senha + rejeição de senha atual errada)
+- Faixa destaque laranja abaixo do hero: "ENTREGA GRÁTIS* · INSTALAÇÃO GRÁTIS · CUPONS GRÁTIS" com nota pequena "*exceto Gás do Povo, que tem entrega cobrada"; bullet do hero atualizado para "Entrega grátis e rápida"
+- Sem taxa de entrega (confirmado pelo usuário — não implementar cobrança por bairro)
+
 ## Pendente do usuário
 - Foto do depósito (deposito.jpeg) — opcional, pode substituir/complementar o card da seção Sobre
 - Desconto automático no valor do 11º pedido — usuário pediu para deixar por último

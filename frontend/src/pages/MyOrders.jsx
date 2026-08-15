@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Gift, PackageOpen, RotateCcw } from "lucide-react";
+import { Gift, PackageOpen, RotateCcw, KeyRound } from "lucide-react";
+import { toast } from "sonner";
 import { API, useAuth } from "../context/AuthContext";
 import { ReferralCard } from "../components/ReferralCard";
 
@@ -19,6 +20,23 @@ export default function MyOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState(null);
   const [loyalty, setLoyalty] = useState(null);
+  const [showPass, setShowPass] = useState(false);
+  const [passForm, setPassForm] = useState({ current: "", next: "" });
+  const [passBusy, setPassBusy] = useState(false);
+
+  const changePassword = async () => {
+    setPassBusy(true);
+    try {
+      await axios.post(`${API}/auth/change-password`, { current_password: passForm.current, new_password: passForm.next }, { withCredentials: true });
+      toast.success("Senha alterada com sucesso!");
+      setPassForm({ current: "", next: "" });
+      setShowPass(false);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao trocar senha");
+    } finally {
+      setPassBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate("/");
@@ -38,6 +56,31 @@ export default function MyOrders() {
       <h1 className="text-2xl font-extrabold tracking-tight mt-6" style={{ fontFamily: "Manrope" }}>Meus pedidos</h1>
 
       <ReferralCard />
+
+      {user.auth_type === "phone" && (
+        <div className="rounded-2xl bg-white border border-border shadow-sm p-5 mt-4" data-testid="change-password-card">
+          <button onClick={() => setShowPass((s) => !s)} data-testid="change-password-toggle"
+            className="w-full flex items-center justify-between font-bold text-sm" style={{ fontFamily: "Manrope" }}>
+            <span className="flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Trocar senha</span>
+            <span className="text-muted-foreground">{showPass ? "−" : "+"}</span>
+          </button>
+          {showPass && (
+            <div className="mt-4 space-y-3">
+              <input type="password" value={passForm.current} onChange={(e) => setPassForm((f) => ({ ...f, current: e.target.value }))}
+                data-testid="current-password-input" placeholder="Senha atual"
+                className="w-full h-12 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="password" value={passForm.next} onChange={(e) => setPassForm((f) => ({ ...f, next: e.target.value }))}
+                data-testid="new-password-input" placeholder="Nova senha (mín. 6 caracteres)"
+                className="w-full h-12 rounded-xl border border-input px-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-ring" />
+              <button onClick={changePassword} disabled={passBusy || passForm.next.length < 6 || !passForm.current}
+                data-testid="change-password-submit"
+                className="w-full h-12 rounded-full bg-secondary text-white font-bold hover:bg-secondary/90 transition-colors disabled:opacity-40">
+                {passBusy ? "Salvando..." : "Salvar nova senha"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {loyalty && (
         <div className="mt-4 rounded-2xl bg-primary text-white p-5" data-testid="loyalty-stamp-card">

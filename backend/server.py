@@ -128,6 +128,11 @@ class ResetInput(BaseModel):
     new_password: str
 
 
+class ChangePasswordInput(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class User(BaseModel):
     user_id: str
     email: str
@@ -783,6 +788,22 @@ async def reset_password(body: ResetInput):
     await db.users.update_one({"phone": phone, "auth_type": "phone"}, {"$set": {"password_hash": hash_password(body.new_password)}})
     await db.password_resets.update_one({"phone": phone, "code": body.code.strip()}, {"$set": {"used": True}})
     await db.login_attempts.delete_many({"identifier": phone})
+    return {"ok": True}
+
+
+@api_router.post("/auth/change-password")
+async def change_password(body: ChangePasswordInput, request: Request):
+    user_session = await get_current_user(request)
+    if not user_session:
+        raise HTTPException(status_code=401, detail="Não autenticado")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no mínimo 6 caracteres")
+    user = await db.users.find_one({"user_id": user_session["user_id"]})
+    if user.get("auth_type") != "phone" or not user.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Sua conta usa login Google e não tem senha")
+    if not verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta")
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
     return {"ok": True}
 
 

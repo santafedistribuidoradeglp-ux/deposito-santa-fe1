@@ -97,7 +97,7 @@ export default function Home() {
               Entrega rápida e atendimento de confiança em <strong className="text-white">João Pessoa</strong>.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-sm justify-items-center sm:justify-items-start max-w-md mx-auto">
-              <div className="flex items-center gap-2 text-white/85"><Truck className="w-4 h-4 text-secondary shrink-0" /> Entrega rápida e segura</div>
+              <div className="flex items-center gap-2 text-white/85"><Truck className="w-4 h-4 text-secondary shrink-0" /> Entrega grátis e rápida</div>
               <div className="flex items-center gap-2 text-white/85"><ShieldCheck className="w-4 h-4 text-secondary shrink-0" /> Produtos de qualidade</div>
               <div className="flex items-center gap-2 text-white/85"><Clock className="w-4 h-4 text-secondary shrink-0" /> Todos os dias, das 7h às 19h</div>
               <div className="flex items-center gap-2 text-white/85"><CreditCard className="w-4 h-4 text-secondary shrink-0" /> Pix, cartão e dinheiro</div>
@@ -125,6 +125,16 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ENTREGA GRÁTIS */}
+      <div className="bg-secondary text-white" data-testid="free-delivery-strip">
+        <div className="max-w-6xl mx-auto px-5 py-4 text-center">
+          <p className="font-extrabold text-sm sm:text-base tracking-wide uppercase" style={{ fontFamily: "Manrope" }}>
+            🚚 Entrega grátis* &nbsp;·&nbsp; 🔧 Instalação grátis &nbsp;·&nbsp; 🎟️ Cupons grátis
+          </p>
+          <p className="text-[11px] text-white/80 mt-0.5">*exceto Gás do Povo, que tem entrega cobrada</p>
+        </div>
+      </div>
 
       {/* LOYALTY */}
       {loyalty && (

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Share2, Copy, MessageCircle, Lock, Wallet, Receipt, BadgeCheck } from "lucide-react";
+import { Share2, Copy, MessageCircle, Wallet, Receipt, BadgeCheck } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 
 const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,7 +15,7 @@ export const ReferralCard = () => {
 
   useEffect(() => {
     axios.get(`${API}/referral/me`, { withCredentials: true }).then((r) => setInfo(r.data)).catch(() => {});
-  }, []);
+  }, [user]);
 
   const toggleLedger = () => {
     if (!showLedger && ledger === null) {
@@ -41,39 +41,28 @@ export const ReferralCard = () => {
         </span>
       </div>
 
-      {!info.unlocked ? (
-        <div className="mt-4 rounded-xl bg-muted p-4 flex items-start gap-3" data-testid="referral-locked">
-          <Lock className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">Compre 1 botijão P13</strong> para desbloquear seu link de indicação. Depois, cada pessoa que comprar um P13 pelo seu link te dá <strong className="text-foreground">{brl(info.credit_value)}</strong> de crédito!
-          </p>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mt-2">
-            Cada pessoa que comprar um P13 pelo seu link te dá <strong className="text-foreground">{brl(info.credit_value)}</strong> de crédito para usar quando quiser.
-          </p>
-          <div className="mt-4 flex items-center gap-4">
-            <img src={qrSrc} alt="QR Code de indicação" className="w-28 h-28 rounded-xl border border-border" data-testid="referral-qr" />
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="rounded-xl bg-muted px-3 py-2.5 text-xs font-mono truncate" data-testid="referral-link">{link}</div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { navigator.clipboard.writeText(link); toast.success("Link copiado!"); }}
-                  data-testid="referral-copy-button"
-                  className="flex-1 h-11 rounded-full border border-input bg-white text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-muted transition-colors">
-                  <Copy className="w-4 h-4" /> Copiar
-                </button>
-                <a href={`https://wa.me/?text=${encodeURIComponent(shareMsg)}`} target="_blank" rel="noopener noreferrer"
-                  data-testid="referral-share-whatsapp"
-                  className="flex-1 h-11 rounded-full bg-[#25D366] text-white text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-[#20bd5a] transition-colors">
-                  <MessageCircle className="w-4 h-4" /> Enviar
-                </a>
-              </div>
-            </div>
+      <p className="text-sm text-muted-foreground mt-2" data-testid="referral-ready-message">
+        <strong className="text-foreground">Nem comprou e já ganhou:</strong> seu link já está pronto. Cada pessoa que comprar um P13 pelo seu link te dá <strong className="text-foreground">{brl(info.credit_value)}</strong> de crédito.
+      </p>
+      <div className="mt-4 flex items-center gap-4">
+        <img src={qrSrc} alt="QR Code de indicação" className="w-28 h-28 rounded-xl border border-border" data-testid="referral-qr" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="rounded-xl bg-muted px-3 py-2.5 text-xs font-mono truncate" data-testid="referral-link">{link}</div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { navigator.clipboard.writeText(link); toast.success("Link copiado!"); }}
+              data-testid="referral-copy-button"
+              className="flex-1 h-11 rounded-full border border-input bg-white text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-muted transition-colors">
+              <Copy className="w-4 h-4" /> Copiar
+            </button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(shareMsg)}`} target="_blank" rel="noopener noreferrer"
+              data-testid="referral-share-whatsapp"
+              className="flex-1 h-11 rounded-full bg-[#25D366] text-white text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-[#20bd5a] transition-colors">
+              <MessageCircle className="w-4 h-4" /> Enviar
+            </a>
           </div>
-        </>
-      )}
+        </div>
+      </div>
 
       {(info.unlocked || user?.account_type === "comercio") && (
         <Link to="/selo" data-testid="selo-link"

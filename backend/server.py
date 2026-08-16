@@ -346,7 +346,7 @@ async def register(body: RegisterInput, response: Response):
         "role": "customer",
         "account_type": body.account_type if body.account_type in ("cliente", "comercio") else "cliente",
         "referral_code": gen_referral_code(),
-        "referral_unlocked": False,
+        "referral_unlocked": True,
         "referral_credit": 0.0,
         "order_count": 0,
         "saved_address": None,
@@ -580,7 +580,7 @@ async def _grant_referral_credit(body: "OrderInput", user, settings: dict) -> st
     if not ref_code or not has_p13(body.items):
         return ""
     ref_user = await db.users.find_one({"referral_code": ref_code}, {"_id": 0, "password_hash": 0})
-    if not ref_user or not ref_user.get("referral_unlocked") or (user and user["user_id"] == ref_user["user_id"]):
+    if not ref_user or (user and user["user_id"] == ref_user["user_id"]):
         return ""
     credit_val = float(settings.get("referral_credit_value", 5.0))
     await db.users.update_one({"user_id": ref_user["user_id"]}, {"$inc": {"referral_credit": credit_val}})
@@ -607,8 +607,6 @@ async def _apply_post_order_updates(body: "OrderInput", user, settings: dict, cr
             "id": str(uuid.uuid4()), "user_id": user["user_id"], "type": "uso", "amount": credit_used,
             "description": "Crédito usado em pedido", "created_at": datetime.now(timezone.utc).isoformat(),
         })
-    if has_p13(body.items):
-        updates["$set"]["referral_unlocked"] = True
     if auto_coupon_code:
         updates["$set"]["gdp_first_used"] = True
     await db.users.update_one({"user_id": user["user_id"]}, updates)
@@ -706,10 +704,9 @@ async def create_order(body: OrderInput, request: Request):
     message = build_whatsapp_message(order)
     number = settings["whatsapp_number"]
     whatsapp_url = f"https://wa.me/{number}?text={urllib.parse.quote(message)}"
-    unlocked_now = bool(user and not user.get("referral_unlocked") and has_p13(body.items))
     return {"order": order, "whatsapp_url": whatsapp_url, "phone_fallback": f"tel:+{number}",
             "loyalty_coupon": loyalty_coupon, "auto_coupon": pricing["coupon_code"] if not body.coupon_code else "",
-            "referral_unlocked_now": unlocked_now}
+            "referral_unlocked_now": False}
 
 
 @api_router.get("/orders/my")
@@ -814,13 +811,18 @@ async def admin_clients(admin: dict = Depends(require_admin)):
 # ---------- Referral ----------
 @api_router.get("/referral/me")
 async def referral_me(user: dict = Depends(require_user)):
+    updates = {}
     if not user.get("referral_code"):
         code = gen_referral_code()
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"referral_code": code}})
         user["referral_code"] = code
+        updates["referral_code"] = code
+    if not user.get("referral_unlocked"):
+        updates["referral_unlocked"] = True
+    if updates:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
     settings = await db.settings.find_one({"key": "store"}, {"_id": 0})
     return {
-        "unlocked": bool(user.get("referral_unlocked")),
+        "unlocked": True,
         "code": user["referral_code"],
         "credit": float(user.get("referral_credit", 0) or 0),
         "credit_value": float(settings.get("referral_credit_value", 5.0)),

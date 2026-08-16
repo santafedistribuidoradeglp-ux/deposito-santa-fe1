@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { API, useAuth } from "../context/AuthContext";
 import { ProductVisual } from "../components/ProductVisual";
+import { ReferralFloatingButton } from "../components/ReferralFloatingButton";
 import { toast } from "sonner";
 import { Ticket } from "lucide-react";
 
@@ -407,11 +408,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* FLOATING WHATSAPP */}
-      <a href={waGeneric} target="_blank" rel="noopener noreferrer" data-testid="floating-whatsapp-button"
-        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xl hover:bg-[#20bd5a] active:scale-[0.95] transition-colors transition-transform">
-        <MessageCircle className="w-7 h-7" />
-      </a>
+      <ReferralFloatingButton />
     </div>
   );
 }

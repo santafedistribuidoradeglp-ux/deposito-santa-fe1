@@ -79,7 +79,7 @@ export default function AuthPage() {
           facade_path = up.data.path;
         }
         await register({ ...form, account_type: accountType, facade_path });
-        toast.success(accountType === "comercio" ? "Cadastro enviado! Seu comércio será publicado após aprovação." : "Cadastro concluído!");
+        toast.success(accountType === "comercio" ? "Cadastro enviado! Seu comércio será publicado após aprovação." : "Cadastro concluído! Seu link para indicar amigos já está pronto.");
       }
       navigate("/");
     } catch (e) {

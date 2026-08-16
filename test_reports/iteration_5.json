@@ -1,0 +1,34 @@
+{
+  "summary": "Validated referral unlock/share change-set end-to-end (backend + frontend). Register now creates immediate referral link, referral credit is granted on anonymous P13 with referral_code, self-referral does not credit, legacy blocked/no-code accounts are auto-migrated by GET /api/referral/me, Home uses floating-referral-share-button and logged-out click redirects to /entrar, and Meus Pedidos shows ReferralCard ready/unblocked with link and share actions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5_referral_unlock_share.py",
+    "/app/test_reports/pytest/iteration5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Referral code generation (gen_referral_code) has no DB uniqueness guarantee/index. Collision risk is low but non-zero; consider unique index on users.referral_code with retry-on-duplicate insert/update."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration5_referral_unlock_share.py",
+    "/app/test_reports/iteration_5.json"
+  ],
+  "success_rate": {
+    "backend": "100% (4/4)",
+    "frontend": "100% (all requested flows passed)"
+  },
+  "test_credentials": "Read from /app/memory/test_credentials.md; no hardcoded seeded credential was used for core assertions.",
+  "seed_data_creation": "Temporary test users/orders/sessions/events/ledger only. Backend pytest fixture cleanup executed; additional Mongo cleanup removed UI-created referral test user.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pytest run command used: source backend/.env + frontend/.env then pytest /app/backend/tests/test_iteration5_referral_unlock_share.py -v --junitxml=/app/test_reports/pytest/iteration5.xml. Frontend was validated against public URL https://santafe-deposito.preview.emergentagent.com with Playwright automation. No MOCKED API used.",
+  "rca of the issue": "N/A (no failing requested behavior found)."
+}

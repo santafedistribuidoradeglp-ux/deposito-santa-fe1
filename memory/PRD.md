@@ -28,6 +28,7 @@ Site/PWA para pedidos de gás e água via WhatsApp. React + FastAPI + MongoDB.
   - Admin 83988331044 restaurado (user_id user_a7e1ef1321b5, duplicata removida); pedidos de teste limpos
   - deployment_agent: PASS, sem bloqueadores — pronto para o usuário clicar em Deploy
   - Base ZERADA para lançamento (2026-06): 0 pedidos, só o admin como usuário, contadores/créditos/indicações zerados; mantidos: 4 produtos, settings, cupons PRIMEIRACOMPRA e GASDOPOVO10; smoke test final OK (API 200, 4 produtos, login admin ok)
+  - 2026-08 — Diagnóstico de link publicado via Git: preview validado com 4 produtos e cadastro por telefone concluído; o repositório não versiona arquivos `.env`, portanto uma hospedagem estática não recebe `REACT_APP_BACKEND_URL` e também não executa FastAPI/MongoDB. A publicação precisa ser full-stack, com frontend apontando para a URL pública do backend e CORS configurado para essa origem.
 
 ## Backlog
 - P2: Verificar execução real do cron do prêmio mensal do ranking

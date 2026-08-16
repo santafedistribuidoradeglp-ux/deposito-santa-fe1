@@ -29,6 +29,9 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()]
+CORS_ORIGINS = [origin.strip().rstrip("/") for origin in os.environ["CORS_ORIGINS"].split(",") if origin.strip()]
+if not CORS_ORIGINS or "*" in CORS_ORIGINS:
+    raise RuntimeError("CORS_ORIGINS must contain one or more explicit frontend origins")
 LOCAL_TZ = ZoneInfo("America/Fortaleza")
 
 # ---------- Object storage (Emergent) ----------
@@ -1095,7 +1098,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

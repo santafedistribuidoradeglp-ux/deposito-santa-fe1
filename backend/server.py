@@ -557,21 +557,21 @@ async def _resolve_manual_coupon(body: "OrderInput", user, is_gdp: bool) -> dict
     coupon = await db.coupons.find_one({"code": body.coupon_code.strip().upper(), "active": True}, {"_id": 0})
     if not coupon:
         raise HTTPException(status_code=400, detail="Cupom inválido ou inativo")
-    if coupon.get("single_use") and coupon.get("used"):
-        raise HTTPException(status_code=400, detail="Este cupom já foi utilizado")
-    if coupon.get("owner_user_id") and (not user or user["user_id"] != coupon["owner_user_id"]):
-        raise HTTPException(status_code=400, detail="Este cupom é pessoal — faça login com a conta que o ganhou")
-    if coupon.get("product_scope") == "p13" and not has_p13(body.items):
-        raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com botijão de gás P13")
-    if coupon.get("product_scope") == "agua" and not has_agua(body.items):
-        raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos com água mineral")
-    if coupon.get("product_scope") == "gasdopovo" and not is_gdp:
-        raise HTTPException(status_code=400, detail="Este cupom só vale para pedidos de Gás do Povo")
-    if coupon.get("first_purchase_only"):
-        if not user:
-            raise HTTPException(status_code=400, detail="Cupom de primeira compra: faça login para usar")
-        if user.get("order_count", 0) > 0:
-            raise HTTPException(status_code=400, detail="Cupom válido apenas na primeira compra")
+    scope_rules = {
+        "p13": (has_p13(body.items), "Este cupom só vale para pedidos com botijão de gás P13"),
+        "agua": (has_agua(body.items), "Este cupom só vale para pedidos com água mineral"),
+        "gasdopovo": (is_gdp, "Este cupom só vale para pedidos de Gás do Povo"),
+    }
+    checks = [
+        (not (coupon.get("single_use") and coupon.get("used")), "Este cupom já foi utilizado"),
+        (not coupon.get("owner_user_id") or (user and user["user_id"] == coupon["owner_user_id"]), "Este cupom é pessoal — faça login com a conta que o ganhou"),
+        scope_rules.get(coupon.get("product_scope"), (True, "")),
+        (not coupon.get("first_purchase_only") or user, "Cupom de primeira compra: faça login para usar"),
+        (not coupon.get("first_purchase_only") or not user or user.get("order_count", 0) == 0, "Cupom válido apenas na primeira compra"),
+    ]
+    for valid, detail in checks:
+        if not valid:
+            raise HTTPException(status_code=400, detail=detail)
     return coupon
 
 
@@ -626,77 +626,89 @@ async def _apply_post_order_updates(body: "OrderInput", user, settings: dict, cr
     return {"code": code, "value": value}
 
 
-@api_router.post("/orders")
-async def create_order(body: OrderInput, request: Request):
+def _validate_order(body: "OrderInput"):
     if "joao pessoa" not in normalize(body.address.city):
         raise HTTPException(status_code=400, detail="Só entregamos em João Pessoa")
     if not body.items:
         raise HTTPException(status_code=400, detail="Pedido vazio")
 
-    user = await get_current_user(request)
-    settings = await db.settings.find_one({"key": "store"}, {"_id": 0})
+
+async def _resolve_order_pricing(body: "OrderInput", user, settings: dict) -> dict:
     is_business = bool(user and user.get("account_type") == "comercio")
-
-    subtotal = 0.0 if is_business else sum(i.price * i.qty for i in body.items)
+    subtotal = 0.0 if is_business else sum(item.price * item.qty for item in body.items)
     is_gdp = has_gdp(body.items)
-
     coupon = None
-    auto_coupon_code, coupon_discount = await _auto_gdp_coupon(body, user, is_business, is_gdp, subtotal)
-    coupon_code = auto_coupon_code
+    coupon_code, coupon_discount = await _auto_gdp_coupon(body, user, is_business, is_gdp, subtotal)
     if body.coupon_code and not is_business:
         coupon = await _resolve_manual_coupon(body, user, is_gdp)
         coupon_code = coupon["code"]
         coupon_discount = _coupon_discount_value(coupon, subtotal)
-
     credit_used = 0.0
     if body.use_credit and user:
         available = float(user.get("referral_credit", 0) or 0)
-        if available > 0:
-            credit_used = available if is_business else min(available, max(subtotal - coupon_discount, 0))
-            credit_used = round(credit_used, 2)
+        credit_used = available if is_business else min(available, max(subtotal - coupon_discount, 0))
+        credit_used = round(credit_used, 2)
+    return {
+        "is_business": is_business,
+        "is_gdp": is_gdp,
+        "subtotal": subtotal,
+        "coupon": coupon,
+        "coupon_code": coupon_code,
+        "coupon_discount": coupon_discount,
+        "credit_used": credit_used,
+        "total": 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used, 0), 2),
+        "referred_by_code": await _grant_referral_credit(body, user, settings),
+    }
 
-    total = 0.0 if is_business else round(max(subtotal - coupon_discount - credit_used, 0), 2)
 
-    referred_by_code = await _grant_referral_credit(body, user, settings)
-
-    order = {
+def _new_order_document(body: "OrderInput", user, pricing: dict) -> dict:
+    return {
         "id": str(uuid.uuid4()),
         "user_id": user["user_id"] if user else None,
         "account_type": user.get("account_type", "cliente") if user else "cliente",
         "customer_name": body.customer_name,
         "phone": body.phone,
-        "items": [i.model_dump() for i in body.items],
-        "subtotal": subtotal,
-        "coupon_code": coupon_code,
-        "coupon_discount": coupon_discount,
-        "credit_used": credit_used,
-        "total": total,
-        "price_negotiable": is_business,
+        "items": [item.model_dump() for item in body.items],
+        "subtotal": pricing["subtotal"],
+        "coupon_code": pricing["coupon_code"],
+        "coupon_discount": pricing["coupon_discount"],
+        "credit_used": pricing["credit_used"],
+        "total": pricing["total"],
+        "price_negotiable": pricing["is_business"],
         "payment_method": body.payment_method,
         "address": body.address.model_dump(),
         "note": body.note,
         "cpf": re.sub(r"\D", "", body.cpf) if body.cpf else "",
-        "is_gas_do_povo": is_gdp,
+        "is_gas_do_povo": pricing["is_gdp"],
         "loyalty_discount": False,
-        "referred_by_code": referred_by_code,
+        "referred_by_code": pricing["referred_by_code"],
         "status": "enviado",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@api_router.post("/orders")
+async def create_order(body: OrderInput, request: Request):
+    _validate_order(body)
+    user = await get_current_user(request)
+    settings = await db.settings.find_one({"key": "store"}, {"_id": 0})
+    pricing = await _resolve_order_pricing(body, user, settings)
+    order = _new_order_document(body, user, pricing)
     await db.orders.insert_one({**order})
 
-    if coupon and coupon.get("single_use"):
-        await db.coupons.update_one({"id": coupon["id"]}, {"$set": {"used": True}})
+    if pricing["coupon"] and pricing["coupon"].get("single_use"):
+        await db.coupons.update_one({"id": pricing["coupon"]["id"]}, {"$set": {"used": True}})
 
     loyalty_coupon = None
     if user:
-        loyalty_coupon = await _apply_post_order_updates(body, user, settings, credit_used, auto_coupon_code, is_business)
+        loyalty_coupon = await _apply_post_order_updates(body, user, settings, pricing["credit_used"], pricing["coupon_code"] if not body.coupon_code else "", pricing["is_business"])
 
     message = build_whatsapp_message(order)
     number = settings["whatsapp_number"]
     whatsapp_url = f"https://wa.me/{number}?text={urllib.parse.quote(message)}"
     unlocked_now = bool(user and not user.get("referral_unlocked") and has_p13(body.items))
     return {"order": order, "whatsapp_url": whatsapp_url, "phone_fallback": f"tel:+{number}",
-            "loyalty_coupon": loyalty_coupon, "auto_coupon": auto_coupon_code,
+            "loyalty_coupon": loyalty_coupon, "auto_coupon": pricing["coupon_code"] if not body.coupon_code else "",
             "referral_unlocked_now": unlocked_now}
 
 
